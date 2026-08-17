@@ -324,7 +324,8 @@ function Foto({ cliente, tamanho = 28 }) {
 export default function PortalDuo() {
   // Começa vazio: a lista real vem do banco assim que a sessão existe.
   const [clientes, setClientes] = useState([]);
-  const [usuarios, setUsuarios] = useState(USUARIOS_INICIAIS);
+  // Começa vazio: quem tem acesso vem do banco, não do arquivo.
+  const [usuarios, setUsuarios] = useState([]);
   const [semanas, setSemanas] = useState(SEMANAS_INICIAIS);
   const [itens, setItens] = useState(ITENS_INICIAIS);
   const [metricas, setMetricas] = useState(METRICAS_INICIAIS);
@@ -601,7 +602,31 @@ export default function PortalDuo() {
     if (lista.length && !lista.some((c) => c.id === clienteId)) setClienteId(lista[0].id);
   };
 
-  useEffect(() => { if (sessao) carregarClientes(); }, [sessao?.id]);
+  // O e-mail de quem acessa mora numa tabela protegida do Supabase, que o
+  // navegador não alcança. Quem faz a ponte é a função listar_acessos, que só
+  // devolve a lista para quem for adm.
+  const carregarAcessos = async () => {
+    const { data, error } = await supabase.rpc("listar_acessos");
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui carregar os acessos: " + error.message }); return; }
+    setUsuarios((data || []).map((r) => ({
+      id: r.id,
+      nome: r.nome,
+      cargo: r.cargo || (r.tipo === "cliente" ? "Cliente" : "Equipe Duo"),
+      tipo: r.tipo,
+      usuario: r.email,
+      senha: "",
+      ativo: true,
+      trocarSenha: false,
+      clienteId: r.cliente_id,
+      ultimo: r.ultimo_acesso ? new Date(r.ultimo_acesso).toLocaleString("pt-BR") : "—",
+    })));
+  };
+
+  useEffect(() => {
+    if (!sessao) return;
+    carregarClientes();
+    if (sessao.tipo === "adm") carregarAcessos();
+  }, [sessao?.id]);
 
   const salvarCliente = async (dados, arquivoFoto) => {
     let foto = dados.foto;
