@@ -326,8 +326,8 @@ export default function PortalDuo() {
   const [clientes, setClientes] = useState([]);
   // Começa vazio: quem tem acesso vem do banco, não do arquivo.
   const [usuarios, setUsuarios] = useState([]);
-  const [semanas, setSemanas] = useState(SEMANAS_INICIAIS);
-  const [itens, setItens] = useState(ITENS_INICIAIS);
+  const [semanas, setSemanas] = useState([]);
+  const [itens, setItens] = useState([]);
   const [metricas, setMetricas] = useState(METRICAS_INICIAIS);
   const [registrosM, setRegistrosM] = useState(REGISTROS_INICIAIS);
   const [documentos, setDocumentos] = useState(DOCUMENTOS_INICIAIS);
@@ -531,45 +531,65 @@ export default function PortalDuo() {
     setAviso({ tom: "ok", texto: `${arquivos.length} arquivo(s) prontos.` });
   };
 
-  const salvarPost = (dados) => {
+  const salvarPost = async (dados) => {
+    const campos = {
+      dia: dados.dia, hora: dados.hora, tipo: dados.tipo, titulo: dados.titulo,
+      formato: dados.formato || null, legenda: dados.legenda || null, obs: dados.obs || null,
+    };
     if (dados.id) {
-      atualizar(dados.id, (i) => ({ ...i, ...dados }));
+      const item = itens.find((i) => i.id === dados.id);
+      const { error } = await supabase.from("posts").update(campos).eq("id", item.uid);
+      if (error) { setAviso({ tom: "erro", texto: "Não consegui salvar o post: " + error.message }); return; }
       registrar(sessao.nome, `Editou ${dados.id}`);
       setAviso({ tom: "ok", texto: "Post atualizado." });
     } else {
       const cl = clientes.find((c) => c.id === dados.clienteId);
-      const nums = itens.filter((i) => i.clienteId === cl.id).map((i) => Number(i.id.split("-")[1]) || 0);
+      const nums = itens.filter((i) => i.clienteId === cl.id).map((i) => Number(String(i.id).split("-")[1]) || 0);
       const novo = `${cl.prefixo}-${String(Math.max(0, ...nums) + 1).padStart(3, "0")}`;
-      setItens((p) => [...p, {
-        ...dados, id: novo, versao: 1,
+      const { error } = await supabase.from("posts").insert({
+        ...campos,
+        codigo: novo,
+        cliente_id: dados.clienteId,
+        semana_id: dados.semanaId,
         status: dados.tipo === "Gravação" ? "agendado" : "rascunho",
-        ajustes: [], pacote: null, arquivos: [],
-        historico: [{ quando: agora(), texto: "Post criado no calendário" }],
-      }]);
+      });
+      if (error) { setAviso({ tom: "erro", texto: "Não consegui criar o post: " + error.message }); return; }
       registrar(sessao.nome, `Criou ${novo} para ${cl.nome}`);
       setAviso({ tom: "ok", texto: `${novo} criado.` });
     }
+    await carregarAgenda();
     setEditando(null);
   };
 
-  const excluirPost = (id) => {
-    setItens((p) => p.filter((i) => i.id !== id));
+  const excluirPost = async (id) => {
+    const item = itens.find((i) => i.id === id);
+    const { error } = await supabase.from("posts").delete().eq("id", item.uid);
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui excluir: " + error.message }); return; }
     registrar(sessao.nome, `Excluiu ${id}`);
     setEditando(null); setAbertoId(null);
     setAviso({ tom: "alerta", texto: "Post removido do calendário." });
+    await carregarAgenda();
   };
 
   /* ---- semanas ---- */
-  const criarSemana = (inicioIso) => {
+  const criarSemana = async (inicioIso) => {
     const jaTem = minhasSemanas.find((s) => s.inicio === inicioIso);
     if (jaTem) { setSemanaId(jaTem.id); return; }
-    const id = "s" + Date.now().toString().slice(-6);
-    setSemanas((p) => [...p, { id, clienteId, inicio: inicioIso }]);
-    setSemanaId(id);
+    const { data, error } = await supabase
+      .from("semanas")
+      .insert({ cliente_id: clienteId, inicio: inicioIso })
+      .select("id")
+      .single();
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui abrir a semana: " + error.message }); return; }
+    await carregarAgenda();
+    setSemanaId(data.id);
     registrar(sessao.nome, `Abriu a semana de ${inicioIso} para ${cliente.nome}`);
   };
-  const moverSemana = (inicioIso) => {
-    setSemanas((p) => p.map((s) => (s.id === semana.id ? { ...s, inicio: inicioIso } : s)));
+
+  const moverSemana = async (inicioIso) => {
+    const { error } = await supabase.from("semanas").update({ inicio: inicioIso }).eq("id", semana.id);
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui mudar as datas: " + error.message }); return; }
+    await carregarAgenda();
     setAviso({ tom: "ok", texto: "Datas da semana atualizadas." });
   };
 
@@ -622,9 +642,33 @@ export default function PortalDuo() {
     })));
   };
 
+  // O banco identifica o post por um código interno (uid) e guarda à parte o
+  // código que aparece na tela, tipo BB-041. O portal inteiro usa o segundo
+  // como identificador, então carrego os dois e guardo o uid para as gravações.
+  const linhaParaPost = (r) => ({
+    id: r.codigo, uid: r.id, clienteId: r.cliente_id, semanaId: r.semana_id,
+    dia: r.dia, hora: r.hora, tipo: r.tipo, titulo: r.titulo,
+    formato: r.formato || "", legenda: r.legenda || "", obs: r.obs || "",
+    versao: r.versao, status: r.status,
+    pacote: r.pacote_nome ? { nome: r.pacote_nome, tam: "" } : null,
+    ajustes: [], arquivos: [], historico: [],
+  });
+
+  const carregarAgenda = async () => {
+    const [sem, pos] = await Promise.all([
+      supabase.from("semanas").select("*").order("inicio"),
+      supabase.from("posts").select("*").order("criado_em"),
+    ]);
+    const falha = sem.error || pos.error;
+    if (falha) { setAviso({ tom: "erro", texto: "Não consegui carregar o calendário: " + falha.message }); return; }
+    setSemanas((sem.data || []).map((r) => ({ id: r.id, clienteId: r.cliente_id, inicio: r.inicio })));
+    setItens((pos.data || []).map(linhaParaPost));
+  };
+
   useEffect(() => {
     if (!sessao) return;
     carregarClientes();
+    carregarAgenda();
     if (sessao.tipo === "adm") carregarAcessos();
   }, [sessao?.id]);
 
@@ -2570,6 +2614,11 @@ select.campo { appearance: none; }
 .check { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; line-height: 1.5; margin-top: 16px; color: var(--tinta2); }
 .check input { margin-top: 3px; }
 .olho { border: 0; background: transparent; font-size: 11px; color: var(--tinta2); padding: 8px; }
+/* O Edge e o Chrome colocam um botão próprio de "mostrar senha" dentro do
+   campo, que aparecia junto com o nosso — dois olhos na mesma linha. */
+.duo input[type="password"]::-ms-reveal,
+.duo input[type="password"]::-ms-clear { display: none; }
+.duo input[type="password"]::-webkit-credentials-auto-fill-button { display: none; visibility: hidden; }
 .contagem { font-size: 10px; color: var(--tinta2); margin-top: 7px; }
 .erro { color: var(--brasa); font-size: 13px; margin: 12px 0 0; }
 .regras { list-style: none; padding: 0; margin: 14px 0 0; font-size: 11px; color: var(--tinta2); line-height: 1.9; }
