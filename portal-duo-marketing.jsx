@@ -337,6 +337,7 @@ export default function PortalDuo() {
 
   const [sessao, setSessao] = useState(null);
   const [carregandoSessao, setCarregandoSessao] = useState(true);
+  const [recuperandoSenha, setRecuperandoSenha] = useState(false);
   const [clienteId, setClienteId] = useState("c1");
   const [semanaId, setSemanaId] = useState(null);
   const [tela, setTela] = useState("clientes");
@@ -408,7 +409,20 @@ export default function PortalDuo() {
       }
       if (vivo) setCarregandoSessao(false);
     });
-    return () => { vivo = false; };
+    // Quem chega pelo link do e-mail de redefinição entra numa sessão especial.
+    // Sem tratar isso, a pessoa entraria no portal e nunca criaria a senha nova.
+    const { data: assinatura } = supabase.auth.onAuthStateChange(async (evento, sessaoSb) => {
+      if (evento === "PASSWORD_RECOVERY") {
+        setRecuperandoSenha(true);
+        if (sessaoSb?.user) {
+          const s = await montarSessao(sessaoSb.user);
+          if (s) setSessao(s);
+        }
+        setCarregandoSessao(false);
+      }
+    });
+
+    return () => { vivo = false; assinatura?.subscription?.unsubscribe(); };
   }, []);
 
   // Devolve null quando dá certo. Quando falha, devolve { texto, culpaDaSenha }:
@@ -443,9 +457,14 @@ export default function PortalDuo() {
     setAbertoId(null);
   };
 
-  const definirSenha = (id, nova) => {
-    setUsuarios((p) => p.map((u) => (u.id === id ? { ...u, senha: nova, trocarSenha: false } : u)));
-    setSessao((s) => (s && s.id === id ? { ...s, senha: nova, trocarSenha: false } : s));
+  // Trocar a PRÓPRIA senha é permitido: o Supabase aceita isso de quem está
+  // logado. Trocar a de outra pessoa, não — para isso existe o e-mail de
+  // redefinição, na tela de Acessos.
+  const definirSenha = async (id, nova) => {
+    const { error } = await supabase.auth.updateUser({ password: nova });
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui alterar a senha: " + error.message }); return; }
+    setSessao((s) => (s ? { ...s, trocarSenha: false } : s));
+    setRecuperandoSenha(false);
     setAviso({ tom: "ok", texto: "Senha alterada." });
   };
 
@@ -785,7 +804,7 @@ export default function PortalDuo() {
   /* ---- telas sem sessão ---- */
   if (carregandoSessao) return (<div className="duo duo-auth"><style>{CSS}</style><div className="entrada"><div className="entrada-caixa rel"><div className="entrada-marca"><Marca tamanho="g" /></div><p className="entrada-sub">Entrando…</p></div></div></div>);
   if (!sessao) return (<div className="duo duo-auth"><style>{CSS}</style><Login onEntrar={entrar} /></div>);
-  if (sessao.trocarSenha) return (<div className="duo duo-auth"><style>{CSS}</style><TrocaObrigatoria usuario={sessao} onSalvar={(n) => definirSenha(sessao.id, n)} onSair={sair} /></div>);
+  if (sessao.trocarSenha || recuperandoSenha) return (<div className="duo duo-auth"><style>{CSS}</style><TrocaObrigatoria usuario={sessao} onSalvar={(n) => definirSenha(sessao.id, n)} onSair={sair} /></div>);
 
   const aberto = itens.find((i) => i.id === abertoId) || null;
   const daSemana = itens.filter((i) => i.clienteId === clienteId && semana && i.semanaId === semana.id);
@@ -2077,11 +2096,16 @@ function Acessos({ clientes, setClientes, usuarios, setUsuarios, sessao, log, on
     setClientes((p) => p.map((c) => (c.id === clienteId ? { ...c, foto: url } : c)));
     onAviso({ tom: "ok", texto: "Foto atualizada. Só este cliente vê a dele." });
   };
-  const redefinir = (u) => {
-    const nova = gerarSenha();
-    setUsuarios((p) => p.map((x) => (x.id === u.id ? { ...x, senha: nova, trocarSenha: true } : x)));
-    setTemp({ usuario: u.usuario, senha: nova });
-    onLog(sessao.nome, `Redefiniu a senha de ${u.nome}`);
+  // O portal roda no navegador e nao tem (nem deve ter) permissao para definir
+  // a senha de outra pessoa. Quem faz isso e o Supabase, mandando um e-mail
+  // para a propria pessoa criar a senha dela. Ninguem mais chega a ver.
+  const redefinir = async (u) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(u.usuario, {
+      redirectTo: window.location.origin,
+    });
+    if (error) { onAviso({ tom: "erro", texto: "Não consegui enviar o e-mail: " + error.message }); return; }
+    setTemp({ usuario: u.usuario });
+    onLog(sessao.nome, `Enviou redefinição de senha para ${u.nome}`);
   };
   const alternar = (u) => {
     setUsuarios((p) => p.map((x) => (x.id === u.id ? { ...x, ativo: !x.ativo } : x)));
@@ -2097,12 +2121,11 @@ function Acessos({ clientes, setClientes, usuarios, setUsuarios, sessao, log, on
       <Cabecalho titulo="Acessos" apoio="Quem entra no portal, com que senha e desde quando." />
       {temp && (
         <div className="temp rel">
-          <p className="rotulo sem-topo">Senha temporária — aparece uma única vez</p>
-          <p className="temp-linha"><span className="temp-user">{temp.usuario}</span><code className="temp-senha">{temp.senha}</code></p>
-          <p className="meta">Envie por um canal seguro. No primeiro acesso o cliente é obrigado a criar a senha dele.</p>
+          <p className="rotulo sem-topo">E-mail de redefinição enviado</p>
+          <p className="temp-linha"><span className="temp-user">{temp.usuario}</span></p>
+          <p className="meta">A pessoa recebeu um link para criar a própria senha. O link vale por uma hora. Ninguém mais tem acesso a essa senha — nem você.</p>
           <div className="acoes">
-            <button className="btn btn-forte btn-mini" onClick={() => copiar(temp.senha)}>Copiar senha</button>
-            <button className="btn btn-leve btn-mini" onClick={() => setTemp(null)}>Já guardei</button>
+            <button className="btn btn-leve btn-mini" onClick={() => setTemp(null)}>Entendi</button>
           </div>
         </div>
       )}
