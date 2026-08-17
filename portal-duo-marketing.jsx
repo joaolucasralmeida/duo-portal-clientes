@@ -612,8 +612,8 @@ export default function PortalDuo() {
   };
 
   /* ---- telas sem sessão ---- */
-  if (!sessao) return (<div className="duo"><style>{CSS}</style><Login usuarios={usuarios} onEntrar={entrar} /></div>);
-  if (sessao.trocarSenha) return (<div className="duo"><style>{CSS}</style><TrocaObrigatoria usuario={sessao} onSalvar={(n) => definirSenha(sessao.id, n)} onSair={sair} /></div>);
+  if (!sessao) return (<div className="duo duo-auth"><style>{CSS}</style><Login usuarios={usuarios} onEntrar={entrar} /></div>);
+  if (sessao.trocarSenha) return (<div className="duo duo-auth"><style>{CSS}</style><TrocaObrigatoria usuario={sessao} onSalvar={(n) => definirSenha(sessao.id, n)} onSair={sair} /></div>);
 
   const aberto = itens.find((i) => i.id === abertoId) || null;
   const daSemana = itens.filter((i) => i.clienteId === clienteId && semana && i.semanaId === semana.id);
@@ -2171,6 +2171,9 @@ const CSS = `
   min-height: 100vh;
   padding-bottom: 90px;
 }
+/* login e troca de senha nao tem a barra de navegacao de baixo, entao nao
+   precisam reservar espaco para ela — sem isso sobra rolagem na tela toda */
+.duo-auth { padding-bottom: 0; }
 .duo *, .duo *::before, .duo *::after { box-sizing: border-box; }
 .duo button { font: inherit; cursor: pointer; }
 .duo :focus-visible { outline: 2px solid var(--cacau); outline-offset: 3px; }
