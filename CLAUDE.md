@@ -28,6 +28,22 @@ volta ao ponto inicial. O próximo passo é ligar no Supabase.
 - `como-colocar-no-ar.md` — guia de deploy escrito para leigo.
 - `COMO-RODAR.md` — como abrir o portal na máquina dele, os dois jeitos abaixo.
 
+## Onde fica
+
+`C:\Users\usuario\Documents\portal-duo` — local, **fora do OneDrive**. Foi
+movido para lá em 17 ago 2026: a sincronização segurava arquivos abertos e
+quebrou tanto o `supabase init` quanto o `Move-Item`. Não devolva para pasta
+sincronizada; para trabalhar de outra máquina, o caminho é clonar do GitHub
+(`joaolucasralmeida/portal-duo-marketing`).
+
+## Rede
+
+A rede do trabalho **bloqueia as portas 5432 e 6543**, então nada fala direto
+com o Postgres daqui — `supabase db push`, `db dump` e afins falham por timeout.
+HTTPS passa normal, então funcionam: a API REST do Supabase, o `supabase
+projects`, o `api-keys` e o portal em si. Migração de banco só pelo SQL Editor
+do painel.
+
 ## Como rodar
 
 **O Rafael não escreve código — quem programa é você.** Ele só dá dois cliques no

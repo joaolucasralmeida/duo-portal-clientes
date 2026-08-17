@@ -61,14 +61,48 @@ Você não precisa dele aqui. Está guardado para quando fizer falta.
 
 ---
 
-## Sobre a pasta
+## Onde o projeto mora
 
-O projeto está dentro do **OneDrive do hospital**. Vale mover para uma pasta
-pessoal, tipo `C:\Users\usuario\Documentos\portal-duo`. Dois motivos:
+`C:\Users\usuario\Documents\portal-duo` — uma pasta local, fora do OneDrive.
 
-1. É projeto da sua agência guardado em conta do trabalho.
-2. A pasta `node_modules` tem milhares de arquivos que o OneDrive fica tentando
-   sincronizar. Deixa o computador lento e ocupa seu espaço na nuvem à toa.
+Saiu do OneDrive porque a sincronização atrapalhava de verdade: ela segurava
+arquivos abertos e travou duas ferramentas do projeto. Além disso, a pasta
+`node_modules` tem milhares de arquivos que o OneDrive tentava sincronizar à toa.
 
-Se quiser mover, me avise que eu movo — ou recorte e cole a pasta inteira, nada
-quebra.
+---
+
+## Trabalhar de casa
+
+**Para só ver o portal, não precisa de nada.** Ele está na internet:
+https://portal-duo-marketing.joaolucasralmeida.workers.dev — abre de qualquer
+computador ou celular.
+
+**Para mexer no projeto de casa**, o lugar dos arquivos é o **GitHub**, não uma
+pasta sincronizada. Ele já guarda tudo, com histórico de cada alteração:
+https://github.com/joaolucasralmeida/portal-duo-marketing
+
+Não use Google Drive, Dropbox ou OneDrive para isso. Não é preciosismo — esses
+serviços sincronizam arquivo por arquivo, e o projeto tem milhares deles. Pior:
+se as duas máquinas mexerem ao mesmo tempo, o histórico do projeto corrompe. O
+GitHub foi feito exatamente para esse problema.
+
+No computador de casa, uma vez só:
+
+1. Instalar o Node (mesmo comando: `winget install OpenJS.NodeJS.LTS`)
+2. Instalar o Git e o Claude Code
+3. Baixar o projeto: `git clone https://github.com/joaolucasralmeida/portal-duo-marketing.git`
+
+Me chame na hora de fazer isso que eu conduzo — é a mesma sequência que rodamos
+aqui.
+
+**Um detalhe que vai te pegar:** o arquivo `.env`, com as chaves do Supabase,
+**não vai para o GitHub de propósito** — chave não se guarda em repositório. Em
+casa ele não vai existir, e o portal reclama. É rápido de resolver: eu gero um
+novo lá, buscando as chaves pela ferramenta do Supabase, igual fiz aqui.
+
+---
+
+## A pasta velha
+
+Sobrou `...\OneDrive\Claude Code` com um arquivo de
+configuração dentro. Pode apagar quando quiser — não tem nada do projeto ali.
