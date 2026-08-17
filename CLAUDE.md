@@ -111,6 +111,12 @@ Valide a sintaxe depois de editar (`esbuild --loader=jsx` resolve rápido).
 O login e as senhas do protótipo são simbólicos, sem segurança real. Na versão
 com Supabase isso vira Supabase Auth de verdade.
 
+O quadro "Acessos de teste" que ficava na tela de login **foi removido a pedido
+dele** (17 ago 2026), para o protótipo não parecer protótipo ao mostrar para
+cliente. Não recoloque. Esta tabela aqui virou a única referência das senhas.
+Remover o quadro é cosmético: as senhas continuam legíveis no código que vai
+para o navegador, porque não existe back-end ainda.
+
 ## Para onde o projeto vai
 
 Stack decidida: **Supabase** (banco + login + storage) + hospedagem estática +

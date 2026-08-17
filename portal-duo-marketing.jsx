@@ -883,13 +883,6 @@ function Login({ usuarios, onEntrar }) {
         {erro && <p className="erro">{erro}</p>}
         {bloqueio > 0 && <p className="erro">Tente de novo em {bloqueio}s.</p>}
         <button className="btn btn-forte largo" onClick={enviar} disabled={bloqueio > 0 || !u || !s}>Entrar</button>
-        <div className="demo baixo">
-          <p className="rotulo">Acessos de teste</p>
-          <p><b>gabriele</b> / demo-equipe — equipe</p>
-          <p><b>joao</b> / demo-equipe — equipe</p>
-          <p><b>brownie</b> / demo-cliente — cliente</p>
-          <p><b>cafe</b> / demo-cliente2 — cliente</p>
-        </div>
       </div>
     </div>
   );
@@ -2456,8 +2449,6 @@ select.campo { appearance: none; }
 .entrada-caixa { width: 100%; max-width: 380px; border-radius: 22px; padding: 34px 30px 30px; }
 .entrada-marca { text-align: center; }
 .entrada-sub { text-align: center; font-weight: 300; letter-spacing: 0.24em; text-transform: uppercase; font-size: 10px; color: var(--tinta2); margin: 12px 0 22px; }
-.demo { border-radius: 12px; padding: 14px; margin-top: 24px; font-size: 11px; color: var(--tinta2); line-height: 1.9; }
-.demo p { margin: 0; }
 
 /* senha temporária */
 .temp { border-radius: 14px; padding: 18px 20px; margin-bottom: 22px; }
