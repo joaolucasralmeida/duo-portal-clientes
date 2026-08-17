@@ -113,8 +113,14 @@ com Supabase isso vira Supabase Auth de verdade.
 
 ## Para onde o projeto vai
 
-Stack decidida: **Supabase** (banco + login + storage) + hospedagem estática
-(Vercel ou Hostinger) + domínio no Registro.br.
+Stack decidida: **Supabase** (banco + login + storage) + hospedagem estática +
+domínio no Registro.br.
+
+Sobre a hospedagem, o `como-colocar-no-ar.md` recomendava Vercel — **corrigido
+para Cloudflare Pages** (ver `SUBIR-DE-GRACA.md`). O plano gratuito da Vercel é
+só para uso não comercial, e um portal de clientes pagantes é uso comercial. O
+free do Cloudflare Pages permite uso comercial e não limita banda. Não mude essa
+recomendação de volta sem falar com ele.
 
 O trabalho que falta é trocar os dados em memória por chamadas ao Supabase, tela
 por tela. Ordem sugerida: login → clientes → calendário/posts → arquivos no
