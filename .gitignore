@@ -6,3 +6,6 @@ dist/
 
 # permissões locais do Claude Code, valem só nesta máquina
 .claude/settings.local.json
+
+# atalho temporario de autorizacao, nao faz parte do projeto
+AUTORIZAR-SUPABASE.bat
