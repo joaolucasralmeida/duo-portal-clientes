@@ -1103,7 +1103,26 @@ function Cabecalho({ titulo, apoio, acao }) {
 
 function NavSemana({ semana, semanas, adm, onTrocar, onCriar, onMover }) {
   const [editar, setEditar] = useState(false);
-  if (!semana) return null;
+  // Cliente novo começa sem nenhuma semana. Antes o componente inteiro sumia
+  // aqui, junto com o botão de criar — não havia como abrir a primeira.
+  // Só a equipe da Duo monta o calendário; o cliente apenas acompanha.
+  if (!semana) {
+    if (!adm) {
+      return (
+        <div className="nav-semana">
+          <p className="apoio">O calendário deste mês ainda não foi montado pela Duo.</p>
+        </div>
+      );
+    }
+    return (
+      <div className="nav-semana">
+        <p className="apoio">Este cliente ainda não tem semana nenhuma no calendário.</p>
+        <div className="nav-atalhos">
+          <button className="atalho rel" onClick={() => onCriar(SEM_ATUAL)}>+ abrir a primeira semana</button>
+        </div>
+      </div>
+    );
+  }
   const idx = semanas.findIndex((s) => s.id === semana.id);
   const inicio = paraData(semana.inicio);
   const futura = inicio > new Date();
