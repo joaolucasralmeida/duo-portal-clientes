@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Portal Duo Marketing</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #DBD4CE; }
+  #aviso {
+    font-family: system-ui, sans-serif; color: #35302B;
+    max-width: 620px; margin: 80px auto; padding: 28px 32px;
+    background: #DBD4CE; border-radius: 18px; line-height: 1.6;
+    box-shadow: 6px 6px 14px #bdb6b1, -6px -6px 14px #f9f2eb;
+  }
+  #aviso h1 { font-size: 19px; font-weight: 600; margin: 0 0 12px; }
+  #aviso code { background: #cec7c1; padding: 2px 6px; border-radius: 5px; font-size: 13px; }
+  #aviso .detalhe { font-size: 12px; color: #706860; margin-top: 18px; word-break: break-word; }
+</style>
+</head>
+<body>
+
+<div id="raiz"></div>
+
+<div id="aviso">
+  <h1>Carregando o portal…</h1>
+  <p>Isso leva alguns segundos na primeira vez. Se esta mensagem não sair da tela,
+     provavelmente o computador está sem internet — esta versão de teste busca o
+     React na internet toda vez que abre.</p>
+</div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+
+<script>
+(function () {
+  var aviso = document.getElementById("aviso");
+
+  function falhar(titulo, texto, detalhe) {
+    aviso.innerHTML =
+      "<h1>" + titulo + "</h1><p>" + texto + "</p>" +
+      (detalhe ? '<div class="detalhe">Detalhe técnico: ' + detalhe + "</div>" : "");
+  }
+
+  if (!window.React || !window.ReactDOM || !window.Babel) {
+    falhar(
+      "Não consegui baixar o React",
+      "Os três arquivos que o portal precisa vêm da internet (unpkg.com). Ou o computador " +
+      "está sem rede, ou a rede do trabalho está bloqueando esse endereço. " +
+      "Testa abrir <code>https://unpkg.com/react@18.3.1/umd/react.production.min.js</code> " +
+      "no navegador: se não abrir, é bloqueio de rede."
+    );
+    return;
+  }
+
+  fetch("./portal-duo-marketing.jsx")
+    .then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    })
+    .then(function (fonte) {
+      // O arquivo é um módulo: importa o React no topo e exporta o componente no fim.
+      // Aqui ele roda sem empacotador, então trocamos as duas pontas por injeção direta.
+      var corpo = fonte
+        .replace(/^\s*import\s+React[^\n]*\n/, "")
+        .replace(/export\s+default\s+function\s+PortalDuo/, "function PortalDuo");
+
+      var codigo = Babel.transform(corpo, {
+        presets: [["react", { runtime: "classic" }]],
+        filename: "portal-duo-marketing.jsx"
+      }).code;
+
+      var fabrica = new Function(
+        "React",
+        "var useState = React.useState, useEffect = React.useEffect, useMemo = React.useMemo;\n" +
+        codigo + "\nreturn PortalDuo;"
+      );
+
+      var PortalDuo = fabrica(window.React);
+      aviso.remove();
+      ReactDOM.createRoot(document.getElementById("raiz"))
+        .render(React.createElement(PortalDuo));
+    })
+    .catch(function (e) {
+      if (location.protocol === "file:") {
+        falhar(
+          "Abra pelo atalho, não pelo arquivo",
+          "Você abriu o <code>index.html</code> dando dois cliques nele. Assim o navegador " +
+          "se recusa a ler o arquivo do portal, por segurança. Feche esta aba e use o atalho " +
+          "<code>ABRIR-PORTAL.bat</code> que está na mesma pasta.",
+          e.message
+        );
+      } else {
+        falhar(
+          "O portal não carregou",
+          "O arquivo <code>portal-duo-marketing.jsx</code> foi encontrado, mas deu erro ao " +
+          "montar a tela. Copie o detalhe abaixo e me mande.",
+          e.message
+        );
+      }
+    });
+})();
+</script>
+</body>
+</html>
