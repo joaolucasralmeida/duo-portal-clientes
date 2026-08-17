@@ -13,6 +13,26 @@
   </head>
   <body>
     <div id="raiz"></div>
+
+    <script>
+      // Sem isto, qualquer erro que impeça o portal de montar deixa a tela
+      // simplesmente bege e vazia, sem dizer nada a quem está olhando.
+      window.addEventListener("error", function (e) {
+        var raiz = document.getElementById("raiz");
+        if (!raiz || raiz.childElementCount > 0) return;
+        raiz.innerHTML =
+          '<div style="font-family:system-ui,sans-serif;color:#35302B;max-width:560px;' +
+          'margin:80px auto;padding:28px 32px;background:#DBD4CE;border-radius:18px;' +
+          'line-height:1.6;box-shadow:6px 6px 14px #bdb6b1,-6px -6px 14px #f9f2eb">' +
+          '<h1 style="font-size:19px;font-weight:600;margin:0 0 12px">O portal não carregou</h1>' +
+          "<p>Alguma coisa quebrou antes de a tela montar. Manda o texto abaixo " +
+          "para quem cuida do sistema, que ele diz exatamente o que houve.</p>" +
+          '<div style="font-size:12px;color:#706860;margin-top:18px;word-break:break-word">' +
+          String((e && e.message) || e) +
+          "</div></div>";
+      });
+    </script>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
