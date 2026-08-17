@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { supabase } from "./src/supabase.js";
 
 /* ------------------------------------------------------------------ */
 /*  DUO MARKETING — Portal do Cliente                                  */
@@ -333,6 +334,7 @@ export default function PortalDuo() {
   ]);
 
   const [sessao, setSessao] = useState(null);
+  const [carregandoSessao, setCarregandoSessao] = useState(true);
   const [clienteId, setClienteId] = useState("c1");
   const [semanaId, setSemanaId] = useState(null);
   const [tela, setTela] = useState("clientes");
@@ -366,14 +368,78 @@ export default function PortalDuo() {
   const atualizar = (id, fn) => setItens((p) => p.map((i) => (i.id === id ? fn(i) : i)));
 
   /* ---- sessão ---- */
-  const entrar = (u) => {
-    setUsuarios((p) => p.map((x) => (x.id === u.id ? { ...x, ultimo: agora() } : x)));
-    setSessao(u);
-    setClienteId(u.tipo === "cliente" ? u.clienteId : "c1");
-    setTela(u.tipo === "adm" ? "clientes" : "agenda");
-    registrar(u.nome, "Entrou no portal");
+  // Quem autentica é o Supabase. O nome, o cargo e o tipo (adm ou cliente)
+  // vêm da tabela perfis, que é o que decide o que a pessoa enxerga.
+  const montarSessao = async (user) => {
+    const { data: perfil } = await supabase
+      .from("perfis")
+      .select("nome, cargo, tipo, cliente_id")
+      .eq("id", user.id)
+      .single();
+    if (!perfil) return null;
+    return {
+      id: user.id,
+      email: user.email,
+      nome: perfil.nome,
+      cargo: perfil.cargo,
+      tipo: perfil.tipo,
+      clienteId: perfil.cliente_id,
+      trocarSenha: false,
+      ativo: true,
+    };
   };
-  const sair = () => { registrar(sessao.nome, "Saiu do portal"); setSessao(null); setAbertoId(null); };
+
+  const aplicarSessao = (s) => {
+    setSessao(s);
+    if (s.tipo === "cliente" && s.clienteId) setClienteId(s.clienteId);
+    setTela(s.tipo === "adm" ? "clientes" : "agenda");
+  };
+
+  // Se o navegador já tem uma sessão guardada, entra direto — sem isso a
+  // pessoa cairia na tela de login a cada vez que atualizasse a página.
+  useEffect(() => {
+    let vivo = true;
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (vivo && data?.session) {
+        const s = await montarSessao(data.session.user);
+        if (vivo && s) aplicarSessao(s);
+      }
+      if (vivo) setCarregandoSessao(false);
+    });
+    return () => { vivo = false; };
+  }, []);
+
+  // Devolve null quando dá certo. Quando falha, devolve { texto, culpaDaSenha }:
+  // problema de rede não é erro de digitação e não deve gastar tentativa, senão
+  // a pessoa fica corrigindo a senha achando que errou quando caiu a internet.
+  const entrar = async (email, senha) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password: senha,
+    });
+    if (error) {
+      const foraDoAr = !error.status || error.status >= 500;
+      return foraDoAr
+        ? { texto: "Não consegui falar com o servidor. Confira a internet e tente de novo.", culpaDaSenha: false }
+        : { texto: "E-mail ou senha não conferem.", culpaDaSenha: true };
+    }
+    if (!data?.user) return { texto: "E-mail ou senha não conferem.", culpaDaSenha: true };
+    const s = await montarSessao(data.user);
+    if (!s) {
+      await supabase.auth.signOut();
+      return { texto: "Esta conta ainda não tem perfil no portal. Fale com a Duo.", culpaDaSenha: false };
+    }
+    aplicarSessao(s);
+    registrar(s.nome, "Entrou no portal");
+    return null;
+  };
+
+  const sair = async () => {
+    registrar(sessao.nome, "Saiu do portal");
+    await supabase.auth.signOut();
+    setSessao(null);
+    setAbertoId(null);
+  };
 
   const definirSenha = (id, nova) => {
     setUsuarios((p) => p.map((u) => (u.id === id ? { ...u, senha: nova, trocarSenha: false } : u)));
@@ -612,7 +678,8 @@ export default function PortalDuo() {
   };
 
   /* ---- telas sem sessão ---- */
-  if (!sessao) return (<div className="duo duo-auth"><style>{CSS}</style><Login usuarios={usuarios} onEntrar={entrar} /></div>);
+  if (carregandoSessao) return (<div className="duo duo-auth"><style>{CSS}</style><div className="entrada"><div className="entrada-caixa rel"><div className="entrada-marca"><Marca tamanho="g" /></div><p className="entrada-sub">Entrando…</p></div></div></div>);
+  if (!sessao) return (<div className="duo duo-auth"><style>{CSS}</style><Login onEntrar={entrar} /></div>);
   if (sessao.trocarSenha) return (<div className="duo duo-auth"><style>{CSS}</style><TrocaObrigatoria usuario={sessao} onSalvar={(n) => definirSenha(sessao.id, n)} onSair={sair} /></div>);
 
   const aberto = itens.find((i) => i.id === abertoId) || null;
@@ -846,24 +913,26 @@ function SeletorCliente({ clientes, atual, onTrocar }) {
 
 /* ------------------------------ login ------------------------------- */
 
-function Login({ usuarios, onEntrar }) {
+function Login({ onEntrar }) {
   const [u, setU] = useState(""); const [s, setS] = useState("");
   const [ver, setVer] = useState(false); const [erro, setErro] = useState("");
   const [tentativas, setTentativas] = useState(0); const [bloqueio, setBloqueio] = useState(0);
+  const [enviando, setEnviando] = useState(false);
 
   useEffect(() => { if (bloqueio <= 0) return; const t = setTimeout(() => setBloqueio((b) => b - 1), 1000); return () => clearTimeout(t); }, [bloqueio]);
 
-  const enviar = () => {
-    if (bloqueio > 0) return;
-    const achado = usuarios.find((x) => x.usuario.toLowerCase() === u.trim().toLowerCase() && x.senha === s);
-    if (!achado) {
-      const t = tentativas + 1; setTentativas(t);
-      if (t >= MAX_TENTATIVAS) { setBloqueio(BLOQUEIO_SEG); setTentativas(0); setErro("Acesso bloqueado por tentativas seguidas."); }
-      else setErro(`Usuário ou senha não conferem. Restam ${MAX_TENTATIVAS - t} tentativas.`);
-      return;
-    }
-    if (!achado.ativo) { setErro("Este acesso está desativado. Fale com a Duo."); return; }
-    setErro(""); onEntrar(achado);
+  // A conferência de e-mail e senha acontece no Supabase, não aqui — por isso
+  // esta função espera a resposta antes de dizer qualquer coisa na tela.
+  const enviar = async () => {
+    if (bloqueio > 0 || enviando) return;
+    setEnviando(true);
+    const falha = await onEntrar(u, s);
+    setEnviando(false);
+    if (!falha) { setErro(""); return; }
+    if (!falha.culpaDaSenha) { setErro(falha.texto); return; }
+    const t = tentativas + 1; setTentativas(t);
+    if (t >= MAX_TENTATIVAS) { setBloqueio(BLOQUEIO_SEG); setTentativas(0); setErro("Acesso bloqueado por tentativas seguidas."); }
+    else setErro(`${falha.texto} Restam ${MAX_TENTATIVAS - t} tentativas.`);
   };
 
   return (
@@ -871,8 +940,8 @@ function Login({ usuarios, onEntrar }) {
       <div className="entrada-caixa rel">
         <div className="entrada-marca"><Marca tamanho="g" /></div>
         <p className="entrada-sub">Portal do cliente</p>
-        <label className="rotulo-2" htmlFor="lg-u">Usuário</label>
-        <input id="lg-u" className="campo baixo" value={u} autoComplete="off" onChange={(e) => setU(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()} />
+        <label className="rotulo-2" htmlFor="lg-u">E-mail</label>
+        <input id="lg-u" className="campo baixo" type="email" value={u} autoComplete="username" onChange={(e) => setU(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()} />
         <label className="rotulo-2" htmlFor="lg-s">Senha</label>
         <div className="campo-linha">
           <input id="lg-s" className="campo baixo" type={ver ? "text" : "password"} value={s} onChange={(e) => setS(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()} />
@@ -882,7 +951,7 @@ function Login({ usuarios, onEntrar }) {
         </div>
         {erro && <p className="erro">{erro}</p>}
         {bloqueio > 0 && <p className="erro">Tente de novo em {bloqueio}s.</p>}
-        <button className="btn btn-forte largo" onClick={enviar} disabled={bloqueio > 0 || !u || !s}>Entrar</button>
+        <button className="btn btn-forte largo" onClick={enviar} disabled={bloqueio > 0 || enviando || !u || !s}>{enviando ? "Entrando…" : "Entrar"}</button>
       </div>
     </div>
   );
