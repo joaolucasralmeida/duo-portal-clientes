@@ -886,7 +886,7 @@ export default function PortalDuo() {
           <Entregas
             itens={daSemana} dias={diasDaSemana(semana)} cliente={cliente} semana={semana}
             onAbrir={setAbertoId} onAnexar={anexar} onEnviar={enviarVersao} onPublicar={publicar} onLiberar={liberarEspaco}
-            onEditar={(i) => setEditando({ tipo: "post", ...i, tipoPost: i.tipo })}
+            onEditar={(i) => setEditando({ ...i, tipoPost: i.tipo, tipo: "post" })}
           />
         )}
 
@@ -927,7 +927,7 @@ export default function PortalDuo() {
         <Painel
           item={aberto} adm={adm} dias={diasDaSemana(semanas.find((s) => s.id === aberto.semanaId))}
           onFechar={() => setAbertoId(null)} onAprovar={() => aprovar(aberto.id)} onAjuste={(m, p) => pedirAjuste(aberto.id, m, p)}
-          onEditar={() => { setEditando({ tipo: "post", ...aberto, tipoPost: aberto.tipo }); setAbertoId(null); }}
+          onEditar={() => { setEditando({ ...aberto, tipoPost: aberto.tipo, tipo: "post" }); setAbertoId(null); }}
         />
       )}
 
