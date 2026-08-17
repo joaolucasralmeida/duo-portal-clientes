@@ -322,7 +322,8 @@ function Foto({ cliente, tamanho = 28 }) {
 /* ------------------------------- app -------------------------------- */
 
 export default function PortalDuo() {
-  const [clientes, setClientes] = useState(CLIENTES_INICIAIS);
+  // Começa vazio: a lista real vem do banco assim que a sessão existe.
+  const [clientes, setClientes] = useState([]);
   const [usuarios, setUsuarios] = useState(USUARIOS_INICIAIS);
   const [semanas, setSemanas] = useState(SEMANAS_INICIAIS);
   const [itens, setItens] = useState(ITENS_INICIAIS);
@@ -572,41 +573,76 @@ export default function PortalDuo() {
   };
 
   /* ---- clientes ---- */
+  // A tabela do banco guarda a foto em "foto_url"; o resto do portal chama de
+  // "foto". Estas duas funções fazem a tradução nos dois sentidos.
+  const linhaParaCliente = (r) => ({
+    id: r.id, nome: r.nome, prefixo: r.prefixo, foto: r.foto_url || "",
+    razao: r.razao || "", cnpj: r.cnpj || "", segmento: r.segmento || "",
+    contato: r.contato || "", telefone: r.telefone || "", email: r.email || "",
+    instagram: r.instagram || "", endereco: r.endereco || "", inicio: r.inicio || "",
+    plano: r.plano || "", obs: r.obs || "",
+  });
+
+  const clienteParaLinha = (d, foto) => ({
+    nome: d.nome, razao: d.razao || null, cnpj: d.cnpj || null,
+    segmento: d.segmento || null, contato: d.contato || null,
+    telefone: d.telefone || null, email: d.email || null,
+    instagram: d.instagram || null, endereco: d.endereco || null,
+    inicio: d.inicio || null, plano: d.plano || null, obs: d.obs || null,
+    foto_url: foto || null,
+  });
+
+  const carregarClientes = async () => {
+    const { data, error } = await supabase.from("clientes").select("*").order("criado_em");
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui carregar os clientes: " + error.message }); return; }
+    const lista = (data || []).map(linhaParaCliente);
+    setClientes(lista);
+    // O cliente selecionado pode ter sumido (excluído, ou o "c1" do protótipo).
+    if (lista.length && !lista.some((c) => c.id === clienteId)) setClienteId(lista[0].id);
+  };
+
+  useEffect(() => { if (sessao) carregarClientes(); }, [sessao?.id]);
+
   const salvarCliente = async (dados, arquivoFoto) => {
     let foto = dados.foto;
     if (arquivoFoto) foto = await lerArquivo(arquivoFoto);
+    const linha = clienteParaLinha(dados, foto);
     if (dados.id) {
-      setClientes((p) => p.map((c) => (c.id === dados.id ? { ...c, ...dados, foto } : c)));
+      const { error } = await supabase.from("clientes").update(linha).eq("id", dados.id);
+      if (error) { setAviso({ tom: "erro", texto: "Não consegui salvar: " + error.message }); return; }
       registrar(sessao.nome, `Editou os dados de ${dados.nome}`);
       setAviso({ tom: "ok", texto: "Dados do cliente salvos." });
     } else {
-      const cid = "c" + Date.now().toString().slice(-6);
-      const prefixo = (dados.nome.split(" ").slice(0, 2).map((p) => p[0]).join("") || "CL").toUpperCase();
-      setClientes((p) => [...p, { ...dados, id: cid, prefixo, foto }]);
-      setUsuarios((p) => [...p, {
-        id: "u" + Date.now().toString().slice(-6), nome: dados.nome, cargo: "Cliente", tipo: "cliente",
-        usuario: dados.usuario, senha: dados.senha, ativo: true, trocarSenha: true, ultimo: "—", clienteId: cid,
-      }]);
-      setSemanas((p) => [...p, { id: "s" + Date.now().toString().slice(-6), clienteId: cid, inicio: SEM_ATUAL }]);
-      setMetricas((p) => [...p, ...criarMetricas(cid)]);
+      linha.prefixo = (dados.nome.split(" ").slice(0, 2).map((p) => p[0]).join("") || "CL").toUpperCase();
+      const { error } = await supabase.from("clientes").insert(linha);
+      if (error) { setAviso({ tom: "erro", texto: "Não consegui cadastrar: " + error.message }); return; }
       registrar(sessao.nome, `Cadastrou o cliente ${dados.nome}`);
-      setAviso({ tom: "ok", texto: `${dados.nome} cadastrado. Senha temporária: ${dados.senha}` });
+      // O acesso do cliente é criado à parte, pelo convite do Supabase: assim a
+      // senha dele não passa por aqui nem por ninguém da Duo.
+      setAviso({ tom: "ok", texto: `${dados.nome} cadastrado. O acesso dele ao portal é criado à parte.` });
     }
+    await carregarClientes();
     setEditando(null);
   };
 
-  const excluirCliente = (id) => {
+  const excluirCliente = async (id) => {
     const c = clientes.find((x) => x.id === id);
-    setClientes((p) => p.filter((x) => x.id !== id));
-    setUsuarios((p) => p.filter((u) => u.clienteId !== id));
+    const { error } = await supabase.from("clientes").delete().eq("id", id);
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui excluir: " + error.message }); return; }
     setSemanas((p) => p.filter((s) => s.clienteId !== id));
     setItens((p) => p.filter((i) => i.clienteId !== id));
     setMetricas((p) => p.filter((m) => m.clienteId !== id));
     setRegistrosM((p) => p.filter((r) => r.clienteId !== id));
     setDocumentos((p) => p.filter((d) => d.clienteId !== id));
-    if (clienteId === id) setClienteId(clientes.find((x) => x.id !== id).id);
-    registrar(sessao.nome, `Excluiu o cliente ${c.nome}`);
-    setAviso({ tom: "alerta", texto: "Cliente e todos os dados removidos." });
+    // Excluir o último cliente deixava o portal sem nenhum selecionado e
+    // derrubava a tela; agora o vazio é tratado.
+    if (clienteId === id) {
+      const sobrou = clientes.find((x) => x.id !== id);
+      setClienteId(sobrou ? sobrou.id : null);
+    }
+    registrar(sessao.nome, `Excluiu o cliente ${c ? c.nome : ""}`);
+    setAviso({ tom: "alerta", texto: "Cliente removido." });
+    await carregarClientes();
   };
 
   /* ---- documentos ---- */
