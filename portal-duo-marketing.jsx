@@ -915,7 +915,7 @@ export default function PortalDuo() {
   const abas = adm
     ? [["clientes", "Clientes"], ["agenda", "Calendário"], ["entregas", "Aprovações"], ["metricas", "Métricas"], ["documentos", "Documentos"], ["perfil", "Perfil"], ["acessos", "Acessos"]]
     : [["agenda", "Calendário"], ["aprovar", `Para aprovar (${paraAprovar.length})`], ["metricas", "Métricas"],
-       ["documentos", `Documentos${docsAssinar > 0 ? ` (${docsAssinar})` : ""}`], ["historico", "Histórico"], ["perfil", "Perfil"]];
+       ["documentos", `Documentos${docsAssinar > 0 ? ` (${docsAssinar})` : ""}`], ["perfil", "Perfil"]];
 
   return (
     <div className="duo">
