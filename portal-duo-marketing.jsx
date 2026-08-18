@@ -469,42 +469,48 @@ export default function PortalDuo() {
   };
 
   /* ---- posts ---- */
-  const aprovar = (id) => {
+  // O status precisa ir para o banco, não só para a tela: é ele que decide se o
+  // cliente enxerga o post. Enquanto ficar como rascunho no banco, o cliente
+  // não vê nada, por mais que a tela da Duo mostre "enviado para aprovação".
+  const gravarPost = async (id, campos) => {
     const it = itens.find((i) => i.id === id);
-    atualizar(id, (i) => ({ ...i, status: "aprovado", historico: [...i.historico, { quando: agora(), texto: "Aprovado pelo cliente" }] }));
+    if (!it) return false;
+    const { error } = await supabase.from("posts").update(campos).eq("id", it.uid);
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui salvar: " + error.message }); return false; }
+    await carregarAgenda();
+    return true;
+  };
+
+  const aprovar = async (id) => {
+    const it = itens.find((i) => i.id === id);
+    if (!(await gravarPost(id, { status: "aprovado" }))) return;
     registrar(sessao.nome, `Aprovou ${id}`);
     notificar("adm", `${cliente.nome} aprovou ${id} — ${it.titulo}`);
     setAbertoId(null);
     setAviso({ tom: "ok", texto: "Aprovado. A Duo já foi avisada." });
   };
 
-  const pedirAjuste = (id, motivo, pedido) => {
+  const pedirAjuste = async (id, motivo, pedido) => {
     const it = itens.find((i) => i.id === id);
     const n = it.ajustes.length + 1;
-    atualizar(id, (i) => {
-      const hist = [...i.historico, { quando: agora(), texto: `Alteração ${n} solicitada pelo cliente` }];
-      if (n >= MAX_AJUSTES) hist.push({ quando: agora(), texto: `Limite de ${MAX_AJUSTES} alterações atingido neste post` });
-      return { ...i, status: "ajuste", ajustes: [...i.ajustes, { n, motivo, pedido }], historico: hist };
-    });
+    if (!(await gravarPost(id, { status: "ajuste" }))) return;
     registrar(sessao.nome, `Solicitou alteração ${n} em ${id}`);
     notificar("adm", `${cliente.nome} pediu alteração ${n}/${MAX_AJUSTES} em ${id}${n >= MAX_AJUSTES ? " — limite atingido" : ""}`);
     setAbertoId(null);
     setAviso({ tom: "alerta", texto: n >= MAX_AJUSTES ? "Enviado. Esse foi o último ajuste deste post." : "Alteração enviada para a Duo." });
   };
 
-  const enviarVersao = (id) => {
+  const enviarVersao = async (id) => {
     const it = itens.find((i) => i.id === id);
-    atualizar(id, (i) => {
-      const v = i.status === "rascunho" ? i.versao : i.versao + 1;
-      return { ...i, status: "aguardando", versao: v, historico: [...i.historico, { quando: agora(), texto: `Versão ${v} enviada para aprovação` }] };
-    });
+    const v = it.status === "rascunho" ? it.versao : it.versao + 1;
+    if (!(await gravarPost(id, { status: "aguardando", versao: v }))) return;
     registrar(sessao.nome, `Enviou ${id} para aprovação`);
     notificar(it.clienteId, `Novo conteúdo para aprovar: ${it.titulo}`);
     setAviso({ tom: "ok", texto: "Enviado para o cliente." });
   };
 
-  const publicar = (id) => {
-    atualizar(id, (i) => ({ ...i, status: "publicado", historico: [...i.historico, { quando: agora(), texto: "Publicado" }] }));
+  const publicar = async (id) => {
+    if (!(await gravarPost(id, { status: "publicado" }))) return;
     registrar(sessao.nome, `Marcou ${id} como publicado`);
   };
 
@@ -603,6 +609,25 @@ export default function PortalDuo() {
     await carregarAgenda();
     setSemanaId(data.id);
     registrar(sessao.nome, `Abriu a semana de ${inicioIso} para ${cliente.nome}`);
+  };
+
+  // Só adm chega aqui: o botão fica atrás da condição de administrador e o
+  // banco recusa gravação de cliente em semanas. Os posts têm vínculo em
+  // cascata, então somem junto — e somem para o cliente na mesma hora.
+  const excluirSemana = async () => {
+    if (!semana) return;
+    const daSemana = itens.filter((i) => i.semanaId === semana.id);
+    if (!window.confirm(
+      `Apagar a semana de ${semana.inicio}?\n\n` +
+      `${daSemana.length} post(s) desta semana serão apagados junto, incluindo os que já estão com o cliente.\n\n` +
+      `Não tem como desfazer.`
+    )) return;
+    const { error } = await supabase.from("semanas").delete().eq("id", semana.id);
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui excluir a semana: " + error.message }); return; }
+    setSemanaId(null);
+    registrar(sessao.nome, `Excluiu a semana de ${semana.inicio} de ${cliente.nome}`);
+    setAviso({ tom: "alerta", texto: `Semana removida com ${daSemana.length} post(s).` });
+    await carregarAgenda();
   };
 
   const moverSemana = async (inicioIso) => {
@@ -851,7 +876,7 @@ export default function PortalDuo() {
 
       <main className="corpo">
         {(tela === "agenda" || tela === "entregas") && (
-          <NavSemana semana={semana} semanas={minhasSemanas} adm={adm} onTrocar={setSemanaId} onCriar={criarSemana} onMover={moverSemana} />
+          <NavSemana semana={semana} semanas={minhasSemanas} adm={adm} onTrocar={setSemanaId} onCriar={criarSemana} onMover={moverSemana} onExcluir={excluirSemana} />
         )}
 
         {tela === "clientes" && adm && (
@@ -1120,7 +1145,7 @@ function Cabecalho({ titulo, apoio, acao }) {
   );
 }
 
-function NavSemana({ semana, semanas, adm, onTrocar, onCriar, onMover }) {
+function NavSemana({ semana, semanas, adm, onTrocar, onCriar, onMover, onExcluir }) {
   const [editar, setEditar] = useState(false);
   // Cliente novo começa sem nenhuma semana. Antes o componente inteiro sumia
   // aqui, junto com o botão de criar — não havia como abrir a primeira.
@@ -1168,6 +1193,7 @@ function NavSemana({ semana, semanas, adm, onTrocar, onCriar, onMover }) {
           <>
             <button className="atalho rel" onClick={() => onCriar(paraIso(somaDias(paraData(semanas[semanas.length - 1].inicio), 7)))}>+ semana</button>
             <button className="atalho rel" onClick={() => setEditar(!editar)}>datas</button>
+            <button className="atalho rel atalho-risco" onClick={onExcluir}>excluir semana</button>
           </>
         )}
       </div>
@@ -2395,7 +2421,7 @@ const CSS = `
 .duo :focus-visible { outline: 2px solid var(--cacau); outline-offset: 3px; }
 .oculto { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
-.rel { box-shadow: -4px -4px 9px var(--luz), 4px 4px 11px var(--sombra); background: var(--base); border: 0; }
+.rel { box-shadow: -5px -5px 12px var(--luz), 5px 5px 14px var(--sombra); background: var(--base); border: 0; }
 .baixo { box-shadow: inset 3px 3px 6px var(--sombra), inset -3px -3px 6px var(--luz); background: var(--base); border: 0; }
 
 /* marca — única coisa fora da Poppins */
@@ -2437,7 +2463,10 @@ const CSS = `
 /* abas */
 .abas { display: flex; gap: 6px; padding: 0 26px 4px; flex-wrap: wrap; }
 .aba { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding: 9px 16px; border-radius: 999px; background: transparent; border: 0; color: var(--tinta2); }
-.aba-on { color: var(--tinta); box-shadow: inset 3px 3px 6px var(--sombra), inset -3px -3px 6px var(--luz); }
+/* Sem a luz branca: era ela que criava o halo aceso atrás da aba ativa.
+   Fica só a sombra, marcando o afundado de forma discreta. */
+.aba-on { color: var(--tinta); box-shadow: inset 2px 2px 5px var(--sombra); }
+.atalho-risco { color: var(--brasa); }
 
 /* estrutura */
 .corpo { max-width: 1160px; margin: 0 auto; padding: 22px 26px 0; }
