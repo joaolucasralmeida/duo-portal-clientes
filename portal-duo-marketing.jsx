@@ -2798,8 +2798,12 @@ const CSS = `
 .tipo-gravacao { background: var(--brasa); }
 
 .trilha { display: grid; grid-template-columns: repeat(7, minmax(142px, 1fr)); overflow-x: auto; border-radius: 16px; padding: 8px; }
-.dia { min-width: 142px; padding: 4px; }
-.dia-cab { display: flex; align-items: baseline; justify-content: space-between; padding: 8px 8px 10px; }
+/* Sem o traço vertical, o número de um dia encostava na sigla do dia seguinte
+   ("17 TER") e a semana virava uma tira só. O último não leva traço. */
+.dia { min-width: 142px; padding: 4px; border-right: 1px solid rgba(150,136,124,0.20); }
+.dia:last-child { border-right: 0; }
+/* Traço fino sob o cabeçalho, separando a data do que foi programado no dia. */
+.dia-cab { display: flex; align-items: baseline; justify-content: space-between; padding: 8px 8px 10px; border-bottom: 1px solid rgba(150,136,124,0.20); margin-bottom: 10px; }
 .dia-sigla { font-size: 10px; letter-spacing: 0.18em; color: var(--tinta2); }
 .dia-num { font-weight: 300; font-size: 19px; }
 .dia-pista { display: flex; flex-direction: column; gap: 9px; min-height: 150px; }
