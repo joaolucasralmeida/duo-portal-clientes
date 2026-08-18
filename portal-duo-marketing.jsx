@@ -577,23 +577,25 @@ export default function PortalDuo() {
       `O post continua registrado no histórico com legenda, versões e alterações. ` +
       `Só o material bruto some — e não tem como desfazer.`
     )) return;
-    // Apaga do Storage de verdade. Antes isto mexia só no registro, então o
-    // espaço nunca era devolvido: o botão dizia "liberado" e o arquivo
-    // continuava lá, consumindo o 1 GB do plano gratuito em silêncio.
-    const caminhos = (it.arquivos || []).map((a) => a.caminho).filter(Boolean);
-    if (it.pacote && it.pacote.caminho) caminhos.push(it.pacote.caminho);
+    // Quem faz a contabilidade é o banco: ele marca os arquivos, atualiza o
+    // post, grava a limpeza na tabela "limpezas" e na linha do tempo, e
+    // devolve os endereços para eu apagar do Storage. Fazer isso aqui, como
+    // era antes, deixava a limpeza sem registro nenhum de quanto foi liberado
+    // e quando. As validações (ser da equipe, post publicado) também passam a
+    // valer mesmo se alguém chamar por fora da tela.
+    const { data, error } = await supabase.rpc("liberar_espaco_post", { p_post: it.uid });
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui liberar: " + error.message }); return; }
+    const caminhos = (data || []).map((r) => (typeof r === "string" ? r : r.caminho)).filter(Boolean);
     if (caminhos.length) {
-      const { error } = await supabase.storage.from("conteudo").remove(caminhos);
-      if (error) { setAviso({ tom: "erro", texto: "Não consegui apagar os arquivos: " + error.message }); return; }
+      const { error: erroStorage } = await supabase.storage.from("conteudo").remove(caminhos);
+      // Aqui o banco já registrou a limpeza. Se o Storage falhar, o arquivo
+      // fica órfão ocupando espaço, e é melhor dizer isso do que dar tudo certo.
+      if (erroStorage) {
+        setAviso({ tom: "alerta", texto: "Registrei a limpeza, mas não consegui apagar os arquivos do servidor: " + erroStorage.message });
+        await carregarAgenda();
+        return;
+      }
     }
-    await supabase.from("post_arquivos")
-      .update({ removido_em: new Date().toISOString(), removido_por: sessao.id })
-      .eq("post_id", it.uid).is("removido_em", null);
-    await supabase.from("posts").update({
-      pacote_nome: null, pacote_caminho: null, pacote_tamanho: 0,
-      arquivos_liberados_em: new Date().toISOString(), bytes_liberados: bytes,
-    }).eq("id", it.uid);
-    await anotar(it.uid, `Arquivos removidos do servidor · ${qtd} arquivo(s) · ${pesoLegivel(bytes)} liberados`);
     registrar(sessao.nome, `Liberou ${pesoLegivel(bytes)} em ${id}`);
     setAviso({ tom: "ok", texto: `${pesoLegivel(bytes)} liberados. O post segue no histórico.` });
     await carregarAgenda();
