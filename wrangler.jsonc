@@ -3,7 +3,7 @@
   // Sem este arquivo, o `wrangler deploy` tenta adivinhar como publicar um
   // projeto Vite e exige Vite 6+. Dizendo explicitamente que a pasta `dist`
   // e um site estatico, ele publica sem precisar adivinhar nada.
-  "name": "portal-duo-marketing",
+  "name": "portal",
   "compatibility_date": "2026-08-17",
   "assets": {
     "directory": "./dist",
