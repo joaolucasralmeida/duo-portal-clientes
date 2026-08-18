@@ -520,6 +520,35 @@ export default function PortalDuo() {
     setAviso({ tom: "ok", texto: "Enviado para o cliente." });
   };
 
+  // Recolher é o oposto de excluir: tira o post da vista do cliente sem perder
+  // nada. Serve para quando o envio foi cedo demais ou com o material errado.
+  const recolher = async (id) => {
+    const it = itens.find((i) => i.id === id);
+    if (!it) return;
+    if (!window.confirm(
+      `Recolher ${id} — "${it.titulo}"?\n\n` +
+      "O post volta para rascunho e some da tela do cliente.\n\n" +
+      "Nada é apagado: título, legenda e arquivos continuam aqui para você corrigir e reenviar."
+    )) return;
+    if (!(await gravarPost(id, { status: "rascunho" }))) return;
+    registrar(sessao.nome, `Recolheu ${id}`);
+    setAviso({ tom: "ok", texto: "Post recolhido. O cliente não vê mais." });
+  };
+
+  const removerArquivo = async (id, arq) => {
+    if (!arq) return;
+    if (!window.confirm(`Remover "${arq.nome}" deste post?\n\nO arquivo é apagado do servidor e o espaço volta. Não tem como desfazer.`)) return;
+    if (arq.caminho) {
+      const { error } = await supabase.storage.from("conteudo").remove([arq.caminho]);
+      if (error) { setAviso({ tom: "erro", texto: "Não consegui apagar o arquivo: " + error.message }); return; }
+    }
+    const { error } = await supabase.from("post_arquivos").delete().eq("id", arq.uid);
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui remover o registro: " + error.message }); return; }
+    registrar(sessao.nome, `Removeu ${arq.nome} de ${id}`);
+    setAviso({ tom: "ok", texto: `${arq.nome} removido. Anexe o certo no lugar.` });
+    await carregarAgenda();
+  };
+
   const publicar = async (id) => {
     if (!(await gravarPost(id, { status: "publicado" }))) return;
     registrar(sessao.nome, `Marcou ${id} como publicado`);
@@ -1011,7 +1040,7 @@ export default function PortalDuo() {
         {tela === "entregas" && (
           <Entregas
             itens={daSemana} dias={diasDaSemana(semana)} cliente={cliente} semana={semana}
-            onAbrir={setAbertoId} onAnexar={anexar} onEnviar={enviarVersao} onPublicar={publicar} onLiberar={liberarEspaco} onExcluir={excluirPost}
+            onAbrir={setAbertoId} onAnexar={anexar} onEnviar={enviarVersao} onPublicar={publicar} onLiberar={liberarEspaco} onExcluir={excluirPost} onRecolher={recolher} onRemoverArquivo={removerArquivo}
             onEditar={(i) => setEditando({ ...i, tipoPost: i.tipo, tipo: "post" })}
           />
         )}
@@ -1535,7 +1564,7 @@ function Cartao({ item, dias, onAbrir }) {
 
 /* ---------------------------- aprovações ---------------------------- */
 
-function Entregas({ itens, dias, cliente, semana, onAbrir, onAnexar, onEnviar, onPublicar, onEditar, onLiberar, onExcluir }) {
+function Entregas({ itens, dias, cliente, semana, onAbrir, onAnexar, onEnviar, onPublicar, onEditar, onLiberar, onExcluir, onRecolher, onRemoverArquivo }) {
   const [filtro, setFiltro] = useState(null);
   const conta = (s) => itens.filter((i) => statusVisivel(i) === s).length;
   const todos = itens.filter((i) => i.tipo !== "Gravação");
@@ -1625,6 +1654,17 @@ function Entregas({ itens, dias, cliente, semana, onAbrir, onAnexar, onEnviar, o
                         ? item.arquivos.map((a) => a.nome).join(" · ")
                         : "Aceita .zip com jpg/png/mp4, ou arquivos soltos"}
                   </span>
+                  {!item.liberado && item.arquivos.length > 0 && (item.status === "rascunho" || item.status === "ajuste") && (
+                    <ul className="arq-lista">
+                      {item.arquivos.map((a) => (
+                        <li key={a.uid || a.nome} className="arq-item">
+                          <span className="arq-nome">{a.nome}</span>
+                          <span className="arq-peso">{pesoLegivel(a.tam || 0)}</span>
+                          <button className="arq-x" title="Remover este arquivo" onClick={() => onRemoverArquivo(item.id, a)}>×</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <input id={`up-${item.id}`} type="file" multiple className="oculto" accept=".zip,.jpg,.jpeg,.png,.webp,.mp4,.mov"
                     onChange={(e) => { if (e.target.files.length) onAnexar(item.id, e.target.files); e.target.value = ""; }} />
                   <label className="btn btn-leve btn-mini" htmlFor={`up-${item.id}`}>Anexar arquivos</label>
@@ -1638,6 +1678,9 @@ function Entregas({ itens, dias, cliente, semana, onAbrir, onAnexar, onEnviar, o
                   )}
                   {item.status === "aprovado" && <button className="btn btn-forte" onClick={() => onPublicar(item.id)}>Marcar como publicado</button>}
                   {item.status === "aguardando" && <span className="espera">Aguardando o cliente</span>}
+                  {["aguardando", "aprovado", "ajuste"].includes(item.status) && (
+                    <button className="btn btn-leve btn-mini" onClick={() => onRecolher(item.id)}>Recolher</button>
+                  )}
                   {item.status === "publicado" && <span className="espera">Encerrado</span>}
                   {podeLiberar(item) && (
                     <button className="btn btn-limpar btn-mini" onClick={() => onLiberar(item.id)}>
@@ -2550,6 +2593,12 @@ const CSS = `
    Fica só a sombra, marcando o afundado de forma discreta. */
 .aba-on { color: var(--tinta); box-shadow: inset 2px 2px 5px var(--sombra); }
 .atalho-risco { color: var(--brasa); }
+/* lista de arquivos anexados, com o x para trocar um deles */
+.arq-lista { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.arq-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--tinta2); }
+.arq-nome { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arq-peso { font-size: 11px; color: var(--tinta2); opacity: 0.75; }
+.arq-x { border: 0; background: transparent; color: var(--brasa); font-size: 17px; line-height: 1; padding: 0 4px; }
 
 /* estrutura */
 .corpo { max-width: 1160px; margin: 0 auto; padding: 22px 26px 0; }
