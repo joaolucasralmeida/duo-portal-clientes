@@ -946,6 +946,32 @@ export default function PortalDuo() {
     setAviso({ tom: "ok", texto: "Documento assinado." });
   };
 
+  // Só adm: o banco também recusa exclusão vinda de cliente. Documento
+  // assinado guarda o nome, o código e a data de quem aceitou — apagar
+  // destrói essa prova, por isso a confirmação diz isso com todas as letras.
+  const excluirDoc = async (id) => {
+    const d = documentos.find((x) => x.id === id);
+    if (!d) return;
+    if (!window.confirm(
+      `Excluir o documento "${d.nome}"?\n\n` +
+      (d.status === "assinado"
+        ? `ATENÇÃO: este documento foi assinado por ${d.assinatura ? d.assinatura.nome : "o cliente"}. ` +
+          "Apagar destrói o registro da assinatura — nome, código e data. É a prova de que ele concordou.\n\n"
+        : "") +
+      (["enviado", "aguardando"].includes(d.status) ? "O cliente já enxerga este documento. Ele vai sumir da tela dele.\n\n" : "") +
+      "O arquivo também é apagado do servidor. Não tem como desfazer."
+    )) return;
+    if (d.caminho) {
+      const { error } = await supabase.storage.from("documentos").remove([d.caminho]);
+      if (error) { setAviso({ tom: "erro", texto: "Não consegui apagar o arquivo: " + error.message }); return; }
+    }
+    const { error } = await supabase.from("documentos").delete().eq("id", id);
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui excluir: " + error.message }); return; }
+    registrar(sessao.nome, `Excluiu o documento ${d.nome}`);
+    setAviso({ tom: "alerta", texto: "Documento removido." });
+    await carregarDocumentos();
+  };
+
   const recusarDoc = async (id, motivo) => {
     const d = documentos.find((x) => x.id === id);
     const { error } = await supabase.from("documentos")
@@ -1164,6 +1190,7 @@ export default function PortalDuo() {
             onEnviar={enviarDoc}
             onAssinar={(d) => setEditando({ tipo: "assinar", doc: d })}
             onRecusar={(d) => setEditando({ tipo: "recusar", doc: d })}
+            onExcluir={excluirDoc}
           />
         )}
 
@@ -2165,7 +2192,7 @@ function FormPeriodo({ dados, metricas, onSalvar, onExcluir, onFechar }) {
 
 /* ---------------------------- documentos ---------------------------- */
 
-function Documentos({ adm, cliente, documentos, onNovo, onEnviar, onAssinar, onRecusar }) {
+function Documentos({ adm, cliente, documentos, onNovo, onEnviar, onAssinar, onRecusar, onExcluir }) {
   const conta = (s) => documentos.filter((d) => d.status === s).length;
   return (
     <section>
@@ -2223,6 +2250,7 @@ function Documentos({ adm, cliente, documentos, onNovo, onEnviar, onAssinar, onR
               <div className="acoes">
                 {d.url && <a className="btn btn-leve btn-mini" href={d.url} target="_blank" rel="noreferrer">Abrir arquivo</a>}
                 {adm && d.status === "rascunho" && <button className="btn btn-forte btn-mini" onClick={() => onEnviar(d.id)}>Enviar ao cliente</button>}
+                {adm && <button className="btn btn-leve btn-mini apagar" onClick={() => onExcluir(d.id)}>Excluir</button>}
                 {adm && d.status === "aguardando" && <span className="espera">Aguardando assinatura</span>}
                 {!adm && d.status === "aguardando" && (
                   <>
