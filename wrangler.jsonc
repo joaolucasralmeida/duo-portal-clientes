@@ -3,7 +3,10 @@
   // Sem este arquivo, o `wrangler deploy` tenta adivinhar como publicar um
   // projeto Vite e exige Vite 6+. Dizendo explicitamente que a pasta `dist`
   // e um site estatico, ele publica sem precisar adivinhar nada.
-  "name": "portal",
+  // Tem que bater com o nome do projeto criado no painel: a Cloudflare ignora
+  // este campo nos builds automaticos e usa o nome de la. Mudar aqui nao
+  // renomeia nada -- renomear exige criar outro projeto no painel.
+  "name": "portal-duo-marketing",
   "compatibility_date": "2026-08-17",
   "assets": {
     "directory": "./dist",
