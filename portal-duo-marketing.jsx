@@ -493,6 +493,17 @@ export default function PortalDuo() {
   const pedirAjuste = async (id, motivo, pedido) => {
     const it = itens.find((i) => i.id === id);
     const n = it.ajustes.length + 1;
+    // Grava a solicitação no banco. Se o limite já tiver estourado, é a trava
+    // do próprio banco que recusa — a tela é só a primeira barreira.
+    const { error } = await supabase.from("alteracoes").insert({
+      post_id: it.uid, numero: n, motivo, pedido,
+    });
+    if (error) {
+      setAviso({ tom: "erro", texto: n > MAX_AJUSTES
+        ? `Este post já teve as ${MAX_AJUSTES} alterações permitidas.`
+        : "Não consegui registrar a alteração: " + error.message });
+      return;
+    }
     if (!(await gravarPost(id, { status: "ajuste" }))) return;
     registrar(sessao.nome, `Solicitou alteração ${n} em ${id}`);
     notificar("adm", `${cliente.nome} pediu alteração ${n}/${MAX_AJUSTES} em ${id}${n >= MAX_AJUSTES ? " — limite atingido" : ""}`);
@@ -689,24 +700,33 @@ export default function PortalDuo() {
   // O banco identifica o post por um código interno (uid) e guarda à parte o
   // código que aparece na tela, tipo BB-041. O portal inteiro usa o segundo
   // como identificador, então carrego os dois e guardo o uid para as gravações.
-  const linhaParaPost = (r) => ({
+  const linhaParaPost = (r, ajustes) => ({
     id: r.codigo, uid: r.id, clienteId: r.cliente_id, semanaId: r.semana_id,
     dia: r.dia, hora: r.hora, tipo: r.tipo, titulo: r.titulo,
     formato: r.formato || "", legenda: r.legenda || "", obs: r.obs || "",
     versao: r.versao, status: r.status,
     pacote: r.pacote_nome ? { nome: r.pacote_nome, tam: "" } : null,
-    ajustes: [], arquivos: [], historico: [],
+    ajustes: ajustes || [], arquivos: [], historico: [],
   });
 
   const carregarAgenda = async () => {
-    const [sem, pos] = await Promise.all([
+    const [sem, pos, alt] = await Promise.all([
       supabase.from("semanas").select("*").order("inicio"),
       supabase.from("posts").select("*").order("criado_em"),
+      supabase.from("alteracoes").select("*").order("numero"),
     ]);
-    const falha = sem.error || pos.error;
+    const falha = sem.error || pos.error || alt.error;
     if (falha) { setAviso({ tom: "erro", texto: "Não consegui carregar o calendário: " + falha.message }); return; }
     setSemanas((sem.data || []).map((r) => ({ id: r.id, clienteId: r.cliente_id, inicio: r.inicio })));
-    setItens((pos.data || []).map(linhaParaPost));
+    // As alterações já pedidas ficam numa tabela à parte. Sem carregá-las, o
+    // contador mostrava sempre "3 de 3 restantes", por mais que o cliente
+    // tivesse pedido — a trava do banco segurava, mas a tela mentia.
+    const porPost = {};
+    (alt.data || []).forEach((a) => {
+      if (!porPost[a.post_id]) porPost[a.post_id] = [];
+      porPost[a.post_id].push({ n: a.numero, motivo: a.motivo, pedido: a.pedido });
+    });
+    setItens((pos.data || []).map((r) => linhaParaPost(r, porPost[r.id])));
   };
 
   useEffect(() => {
@@ -2700,6 +2720,9 @@ select.campo { appearance: none; }
 /* login */
 .entrada { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 30px 20px; }
 .entrada-caixa { width: 100%; max-width: 380px; border-radius: 22px; padding: 34px 30px 30px; }
+/* A caixa de entrada é grande, e o brilho branco do relevo virava um halo
+   aceso em volta dela. Aqui a luz entra bem mais fraca que no resto. */
+.entrada-caixa.rel { box-shadow: -2px -2px 8px rgba(255,255,255,0.45), 5px 5px 14px var(--sombra); }
 .entrada-marca { text-align: center; }
 .entrada-sub { text-align: center; font-weight: 300; letter-spacing: 0.24em; text-transform: uppercase; font-size: 10px; color: var(--tinta2); margin: 12px 0 22px; }
 
