@@ -330,7 +330,7 @@ export default function PortalDuo() {
   const [itens, setItens] = useState([]);
   const [metricas, setMetricas] = useState([]);
   const [registrosM, setRegistrosM] = useState([]);
-  const [documentos, setDocumentos] = useState(DOCUMENTOS_INICIAIS);
+  const [documentos, setDocumentos] = useState([]);
   const [notificacoes, setNotificacoes] = useState([
     { id: "n1", para: "adm", texto: "Café da Serra ainda não acessou o portal", quando: "ontem · 18:00", lida: true },
   ]);
@@ -825,6 +825,7 @@ export default function PortalDuo() {
     carregarClientes();
     carregarAgenda();
     carregarMetricas();
+    carregarDocumentos();
     if (sessao.tipo === "adm") carregarAcessos();
   }, [sessao?.id]);
 
@@ -871,55 +872,86 @@ export default function PortalDuo() {
   };
 
   /* ---- documentos ---- */
-  const salvarDoc = async (dados, arquivo) => {
-    let url = dados.url, arquivoNome = dados.arquivoNome;
-    if (arquivo) { url = URL.createObjectURL(arquivo); arquivoNome = arquivo.name; }
-    if (dados.id) {
-      setDocumentos((p) => p.map((d) => (d.id === dados.id ? { ...d, ...dados, url, arquivoNome } : d)));
-    } else {
-      setDocumentos((p) => [...p, {
-        ...dados, id: "d" + Date.now().toString().slice(-6), url, arquivoNome,
-        status: "rascunho", enviadoEm: null, assinadoEm: null, assinatura: null, recusa: null,
-        historico: [{ quando: agora(), texto: "Documento criado" }],
-      }]);
-      registrar(sessao.nome, `Subiu o documento ${dados.nome}`);
+  // Contrato nunca entra na limpeza de espaço: fica guardado para sempre, no
+  // balde "documentos", separado do material de post.
+  const carregarDocumentos = async () => {
+    const { data, error } = await supabase.from("documentos").select("*").order("criado_em");
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui carregar os documentos: " + error.message }); return; }
+    const caminhos = (data || []).map((d) => d.arquivo_caminho).filter(Boolean);
+    const links = {};
+    if (caminhos.length) {
+      const { data: ass } = await supabase.storage.from("documentos").createSignedUrls(caminhos, 3600);
+      (ass || []).forEach((s) => { if (s.path && s.signedUrl) links[s.path] = s.signedUrl; });
     }
-    setEditando(null);
-    setAviso({ tom: "ok", texto: "Documento salvo." });
+    setDocumentos((data || []).map((d) => ({
+      id: d.id, clienteId: d.cliente_id, nome: d.nome, docTipo: d.tipo,
+      exigeAssinatura: d.exige_assinatura, status: d.status,
+      url: links[d.arquivo_caminho] || null, arquivoNome: d.arquivo_nome || "",
+      caminho: d.arquivo_caminho,
+      enviadoEm: d.enviado_em, assinadoEm: d.assinado_em,
+      assinatura: d.assinado_em ? { nome: d.assinante_nome, codigo: d.assinatura_codigo, quando: d.assinado_em } : null,
+      recusa: d.recusa_motivo ? { motivo: d.recusa_motivo, quando: d.assinado_em } : null,
+      historico: [],
+    })));
   };
 
-  const enviarDoc = (id) => {
+  const salvarDoc = async (dados, arquivo) => {
+    const campos = {
+      nome: dados.nome, tipo: dados.docTipo || "Contrato",
+      exige_assinatura: dados.exigeAssinatura !== false,
+    };
+    if (arquivo) {
+      const limpo = arquivo.name.replace(/[^\w.-]+/g, "_");
+      const caminho = `${dados.clienteId || clienteId}/${Date.now()}-${limpo}`;
+      const { error } = await supabase.storage.from("documentos").upload(caminho, arquivo);
+      if (error) { setAviso({ tom: "erro", texto: "Não consegui enviar o arquivo: " + error.message }); return; }
+      campos.arquivo_caminho = caminho;
+      campos.arquivo_nome = arquivo.name;
+      campos.arquivo_tamanho = arquivo.size;
+    }
+    const { error } = dados.id
+      ? await supabase.from("documentos").update(campos).eq("id", dados.id)
+      : await supabase.from("documentos").insert({ ...campos, cliente_id: dados.clienteId || clienteId, status: "rascunho" });
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui salvar: " + error.message }); return; }
+    if (!dados.id) registrar(sessao.nome, `Subiu o documento ${dados.nome}`);
+    setEditando(null);
+    setAviso({ tom: "ok", texto: "Documento salvo." });
+    await carregarDocumentos();
+  };
+
+  const enviarDoc = async (id) => {
     const d = documentos.find((x) => x.id === id);
     const novoStatus = d.exigeAssinatura ? "aguardando" : "enviado";
-    setDocumentos((p) => p.map((x) => x.id === id ? {
-      ...x, status: novoStatus, enviadoEm: paraIso(new Date()),
-      historico: [...x.historico, { quando: agora(), texto: d.exigeAssinatura ? "Enviado para assinatura" : "Enviado ao cliente" }],
-    } : x));
+    const { error } = await supabase.from("documentos")
+      .update({ status: novoStatus, enviado_em: new Date().toISOString() }).eq("id", id);
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui enviar: " + error.message }); return; }
+    await carregarDocumentos();
     notificar(d.clienteId, d.exigeAssinatura ? `Documento aguardando sua assinatura: ${d.nome}` : `Novo documento disponível: ${d.nome}`);
     notificar("adm", `${clientes.find((c) => c.id === d.clienteId).nome} — ${d.nome} aguardando assinatura`);
     registrar(sessao.nome, `Enviou ${d.nome}`);
     setAviso({ tom: "ok", texto: "Documento enviado ao cliente." });
   };
 
-  const assinarDoc = (id, nome) => {
+  const assinarDoc = async (id, nome) => {
     const d = documentos.find((x) => x.id === id);
     const codigo = codigoAssinatura();
-    setDocumentos((p) => p.map((x) => x.id === id ? {
-      ...x, status: "assinado", assinadoEm: paraIso(new Date()),
-      assinatura: { nome, codigo, quando: agora() },
-      historico: [...x.historico, { quando: agora(), texto: `Assinado por ${nome} · ${codigo}` }],
-    } : x));
+    const { error } = await supabase.from("documentos").update({
+      status: "assinado", assinado_em: new Date().toISOString(),
+      assinante_nome: nome, assinatura_codigo: codigo,
+    }).eq("id", id);
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui registrar a assinatura: " + error.message }); return; }
+    await carregarDocumentos();
     notificar("adm", `${cliente.nome} assinou ${d.nome}`);
     registrar(sessao.nome, `Assinou ${d.nome}`);
     setAviso({ tom: "ok", texto: "Documento assinado." });
   };
 
-  const recusarDoc = (id, motivo) => {
+  const recusarDoc = async (id, motivo) => {
     const d = documentos.find((x) => x.id === id);
-    setDocumentos((p) => p.map((x) => x.id === id ? {
-      ...x, status: "recusado", recusa: { motivo, quando: agora() },
-      historico: [...x.historico, { quando: agora(), texto: `Recusado — ${motivo}` }],
-    } : x));
+    const { error } = await supabase.from("documentos")
+      .update({ status: "recusado", recusa_motivo: motivo }).eq("id", id);
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui registrar a recusa: " + error.message }); return; }
+    await carregarDocumentos();
     notificar("adm", `${cliente.nome} recusou ${d.nome}`);
     setAviso({ tom: "alerta", texto: "Recusa registrada." });
   };
