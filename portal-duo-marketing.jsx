@@ -629,6 +629,15 @@ export default function PortalDuo() {
 
   const excluirPost = async (id) => {
     const item = itens.find((i) => i.id === id);
+    if (!item) return;
+    const jaVisto = ["aguardando", "aprovado", "ajuste", "publicado"].includes(item.status);
+    const qtd = (item.arquivos || []).length;
+    if (!window.confirm(
+      `Excluir ${id} — "${item.titulo}"?\n\n` +
+      (jaVisto ? "O cliente já enxerga este post. Ele vai sumir da tela dele na hora.\n\n" : "") +
+      (qtd ? `${qtd} arquivo(s) serão apagados do servidor junto.\n\n` : "") +
+      "Não tem como desfazer."
+    )) return;
     // O banco apaga o registro dos arquivos em cascata, mas o Storage é outro
     // lugar e não some junto. Sem isto, apagar um post deixaria os arquivos
     // ocupando espaço para sempre, sem nada no portal apontando para eles.
@@ -1002,7 +1011,7 @@ export default function PortalDuo() {
         {tela === "entregas" && (
           <Entregas
             itens={daSemana} dias={diasDaSemana(semana)} cliente={cliente} semana={semana}
-            onAbrir={setAbertoId} onAnexar={anexar} onEnviar={enviarVersao} onPublicar={publicar} onLiberar={liberarEspaco}
+            onAbrir={setAbertoId} onAnexar={anexar} onEnviar={enviarVersao} onPublicar={publicar} onLiberar={liberarEspaco} onExcluir={excluirPost}
             onEditar={(i) => setEditando({ ...i, tipoPost: i.tipo, tipo: "post" })}
           />
         )}
@@ -1526,7 +1535,7 @@ function Cartao({ item, dias, onAbrir }) {
 
 /* ---------------------------- aprovações ---------------------------- */
 
-function Entregas({ itens, dias, cliente, semana, onAbrir, onAnexar, onEnviar, onPublicar, onEditar, onLiberar }) {
+function Entregas({ itens, dias, cliente, semana, onAbrir, onAnexar, onEnviar, onPublicar, onEditar, onLiberar, onExcluir }) {
   const [filtro, setFiltro] = useState(null);
   const conta = (s) => itens.filter((i) => statusVisivel(i) === s).length;
   const todos = itens.filter((i) => i.tipo !== "Gravação");
@@ -1637,6 +1646,7 @@ function Entregas({ itens, dias, cliente, semana, onAbrir, onAnexar, onEnviar, o
                   )}
                   <button className="btn btn-leve btn-mini" onClick={() => onEditar(item)}>Editar</button>
                   <button className="btn btn-leve btn-mini" onClick={() => onAbrir(item.id)}>Abrir</button>
+                  <button className="btn btn-leve btn-mini apagar" onClick={() => onExcluir(item.id)}>Excluir</button>
                 </div>
               </div>
             );
