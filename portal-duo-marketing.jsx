@@ -539,15 +539,25 @@ export default function PortalDuo() {
       `O post continua registrado no histórico com legenda, versões e alterações. ` +
       `Só o material bruto some — e não tem como desfazer.`
     )) return;
-    (it.arquivos || []).forEach((a) => { if (a.url) { try { URL.revokeObjectURL(a.url); } catch (e) {} } });
-    if (it.pacote && it.pacote.url) { try { URL.revokeObjectURL(it.pacote.url); } catch (e) {} }
-    atualizar(id, (i) => ({
-      ...i, arquivos: [], pacote: null,
-      liberado: { quando: agora(), qtd, bytes, por: sessao.nome },
-      historico: [...i.historico, { quando: agora(), texto: `Arquivos removidos do servidor · ${qtd} arquivo(s) · ${pesoLegivel(bytes)} liberados` }],
-    }));
+    // Apaga do Storage de verdade. Antes isto mexia só no registro, então o
+    // espaço nunca era devolvido: o botão dizia "liberado" e o arquivo
+    // continuava lá, consumindo o 1 GB do plano gratuito em silêncio.
+    const caminhos = (it.arquivos || []).map((a) => a.caminho).filter(Boolean);
+    if (it.pacote && it.pacote.caminho) caminhos.push(it.pacote.caminho);
+    if (caminhos.length) {
+      const { error } = await supabase.storage.from("conteudo").remove(caminhos);
+      if (error) { setAviso({ tom: "erro", texto: "Não consegui apagar os arquivos: " + error.message }); return; }
+    }
+    await supabase.from("post_arquivos")
+      .update({ removido_em: new Date().toISOString(), removido_por: sessao.id })
+      .eq("post_id", it.uid).is("removido_em", null);
+    await supabase.from("posts").update({
+      pacote_nome: null, pacote_caminho: null, pacote_tamanho: 0,
+      arquivos_liberados_em: new Date().toISOString(), bytes_liberados: bytes,
+    }).eq("id", it.uid);
     registrar(sessao.nome, `Liberou ${pesoLegivel(bytes)} em ${id}`);
     setAviso({ tom: "ok", texto: `${pesoLegivel(bytes)} liberados. O post segue no histórico.` });
+    await carregarAgenda();
   };
 
   // O arquivo vai para o Storage do Supabase, no bucket "conteudo". O caminho
@@ -619,6 +629,12 @@ export default function PortalDuo() {
 
   const excluirPost = async (id) => {
     const item = itens.find((i) => i.id === id);
+    // O banco apaga o registro dos arquivos em cascata, mas o Storage é outro
+    // lugar e não some junto. Sem isto, apagar um post deixaria os arquivos
+    // ocupando espaço para sempre, sem nada no portal apontando para eles.
+    const caminhos = (item.arquivos || []).map((a) => a.caminho).filter(Boolean);
+    if (item.pacote && item.pacote.caminho) caminhos.push(item.pacote.caminho);
+    if (caminhos.length) await supabase.storage.from("conteudo").remove(caminhos);
     const { error } = await supabase.from("posts").delete().eq("id", item.uid);
     if (error) { setAviso({ tom: "erro", texto: "Não consegui excluir: " + error.message }); return; }
     registrar(sessao.nome, `Excluiu ${id}`);
@@ -726,7 +742,7 @@ export default function PortalDuo() {
     formato: r.formato || "", legenda: r.legenda || "", obs: r.obs || "",
     versao: r.versao, status: r.status,
     pacote: r.pacote_nome
-      ? { nome: r.pacote_nome, bytes: r.pacote_tamanho || 0, tam: pesoLegivel(r.pacote_tamanho || 0) }
+      ? { nome: r.pacote_nome, caminho: r.pacote_caminho, bytes: r.pacote_tamanho || 0, tam: pesoLegivel(r.pacote_tamanho || 0) }
       : null,
     ajustes: ajustes || [], arquivos: arquivos || [], historico: [],
   });
@@ -761,7 +777,7 @@ export default function PortalDuo() {
     const arqPorPost = {};
     (arq.data || []).forEach((a) => {
       if (!arqPorPost[a.post_id]) arqPorPost[a.post_id] = [];
-      arqPorPost[a.post_id].push({ nome: a.nome, tipo: a.tipo, tam: a.tamanho || 0, url: links[a.caminho] || null });
+      arqPorPost[a.post_id].push({ uid: a.id, caminho: a.caminho, nome: a.nome, tipo: a.tipo, tam: a.tamanho || 0, url: links[a.caminho] || null });
     });
     setItens((pos.data || []).map((r) => linhaParaPost(r, porPost[r.id], arqPorPost[r.id])));
   };
