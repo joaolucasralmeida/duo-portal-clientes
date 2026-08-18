@@ -2486,12 +2486,22 @@ function Acessos({ clientes, setClientes, usuarios, setUsuarios, sessao, log, on
       </ul>
 
       <div className="nota baixo">
-        <p className="rotulo sem-topo">Sobre a segurança deste protótipo</p>
+        <p className="rotulo sem-topo">Sobre a segurança</p>
         <p>
-          Aqui as senhas ficam na memória do navegador e a assinatura eletrônica é simbólica, só para testar o fluxo.
-          Na versão publicada, senhas precisam de hash no servidor, a separação entre clientes precisa existir no banco
-          (Row Level Security) e a assinatura, para valer juridicamente, precisa de um provedor com carimbo de tempo —
-          Clicksign, ZapSign ou D4Sign resolvem isso e têm API.
+          <b>Senhas:</b> quem confere e guarda é o Supabase, com a senha embaralhada no servidor.
+          Ela não passa pelo portal, não fica na memória do navegador e ninguém da Duo consegue vê-la —
+          nem para ajudar. Esqueceu, o caminho é o e-mail de redefinição, em Acessos.
+        </p>
+        <p>
+          <b>Separação entre clientes:</b> existe no banco, não só na tela. Cada consulta é filtrada
+          pelo próprio banco de dados, então um cliente não alcança o material de outro nem forçando o
+          endereço. Os arquivos seguem a mesma regra e só abrem por link temporário.
+        </p>
+        <p>
+          <b>Assinatura eletrônica:</b> esta é a parte que <b>ainda não</b> está resolvida. O portal registra
+          quem assinou, quando e com que código — serve como aceite e prova de concordância, mas
+          <b> não tem validade jurídica plena</b>. Para contrato de prestação de serviço, é preciso um
+          provedor com carimbo de tempo: Clicksign, ZapSign ou D4Sign, todos com API.
         </p>
       </div>
     </section>
