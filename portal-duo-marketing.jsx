@@ -472,18 +472,26 @@ export default function PortalDuo() {
   // O status precisa ir para o banco, não só para a tela: é ele que decide se o
   // cliente enxerga o post. Enquanto ficar como rascunho no banco, o cliente
   // não vê nada, por mais que a tela da Duo mostre "enviado para aprovação".
-  const gravarPost = async (id, campos) => {
+  // "nota" vira uma linha na linha do tempo do post. Fica aqui, no caminho
+  // comum de toda mudança de status, para nenhum evento passar sem registro.
+  const gravarPost = async (id, campos, nota) => {
     const it = itens.find((i) => i.id === id);
     if (!it) return false;
     const { error } = await supabase.from("posts").update(campos).eq("id", it.uid);
     if (error) { setAviso({ tom: "erro", texto: "Não consegui salvar: " + error.message }); return false; }
+    if (nota) await supabase.from("post_historico").insert({ post_id: it.uid, texto: nota, autor: sessao.nome });
     await carregarAgenda();
     return true;
   };
 
+  const anotar = async (postUid, texto) => {
+    if (!postUid) return;
+    await supabase.from("post_historico").insert({ post_id: postUid, texto, autor: sessao.nome });
+  };
+
   const aprovar = async (id) => {
     const it = itens.find((i) => i.id === id);
-    if (!(await gravarPost(id, { status: "aprovado" }))) return;
+    if (!(await gravarPost(id, { status: "aprovado" }, "Aprovado pelo cliente"))) return;
     registrar(sessao.nome, `Aprovou ${id}`);
     notificar("adm", `${cliente.nome} aprovou ${id} — ${it.titulo}`);
     setAbertoId(null);
@@ -504,7 +512,7 @@ export default function PortalDuo() {
         : "Não consegui registrar a alteração: " + error.message });
       return;
     }
-    if (!(await gravarPost(id, { status: "ajuste" }))) return;
+    if (!(await gravarPost(id, { status: "ajuste" }, `Alteração ${n} de ${MAX_AJUSTES} solicitada pelo cliente`))) return;
     registrar(sessao.nome, `Solicitou alteração ${n} em ${id}`);
     notificar("adm", `${cliente.nome} pediu alteração ${n}/${MAX_AJUSTES} em ${id}${n >= MAX_AJUSTES ? " — limite atingido" : ""}`);
     setAbertoId(null);
@@ -514,7 +522,7 @@ export default function PortalDuo() {
   const enviarVersao = async (id) => {
     const it = itens.find((i) => i.id === id);
     const v = it.status === "rascunho" ? it.versao : it.versao + 1;
-    if (!(await gravarPost(id, { status: "aguardando", versao: v }))) return;
+    if (!(await gravarPost(id, { status: "aguardando", versao: v }, `Versão ${v} enviada para aprovação`))) return;
     registrar(sessao.nome, `Enviou ${id} para aprovação`);
     notificar(it.clienteId, `Novo conteúdo para aprovar: ${it.titulo}`);
     setAviso({ tom: "ok", texto: "Enviado para o cliente." });
@@ -530,7 +538,7 @@ export default function PortalDuo() {
       "O post volta para rascunho e some da tela do cliente.\n\n" +
       "Nada é apagado: título, legenda e arquivos continuam aqui para você corrigir e reenviar."
     )) return;
-    if (!(await gravarPost(id, { status: "rascunho" }))) return;
+    if (!(await gravarPost(id, { status: "rascunho" }, "Recolhido pela Duo — saiu da vista do cliente"))) return;
     registrar(sessao.nome, `Recolheu ${id}`);
     setAviso({ tom: "ok", texto: "Post recolhido. O cliente não vê mais." });
   };
@@ -544,13 +552,14 @@ export default function PortalDuo() {
     }
     const { error } = await supabase.from("post_arquivos").delete().eq("id", arq.uid);
     if (error) { setAviso({ tom: "erro", texto: "Não consegui remover o registro: " + error.message }); return; }
+    await anotar((itens.find((i) => i.id === id) || {}).uid, `Arquivo removido: ${arq.nome}`);
     registrar(sessao.nome, `Removeu ${arq.nome} de ${id}`);
     setAviso({ tom: "ok", texto: `${arq.nome} removido. Anexe o certo no lugar.` });
     await carregarAgenda();
   };
 
   const publicar = async (id) => {
-    if (!(await gravarPost(id, { status: "publicado" }))) return;
+    if (!(await gravarPost(id, { status: "publicado" }, "Marcado como publicado"))) return;
     registrar(sessao.nome, `Marcou ${id} como publicado`);
   };
 
@@ -584,6 +593,7 @@ export default function PortalDuo() {
       pacote_nome: null, pacote_caminho: null, pacote_tamanho: 0,
       arquivos_liberados_em: new Date().toISOString(), bytes_liberados: bytes,
     }).eq("id", it.uid);
+    await anotar(it.uid, `Arquivos removidos do servidor · ${qtd} arquivo(s) · ${pesoLegivel(bytes)} liberados`);
     registrar(sessao.nome, `Liberou ${pesoLegivel(bytes)} em ${id}`);
     setAviso({ tom: "ok", texto: `${pesoLegivel(bytes)} liberados. O post segue no histórico.` });
     await carregarAgenda();
@@ -621,6 +631,7 @@ export default function PortalDuo() {
       }
       enviados++;
     }
+    await anotar(it.uid, `${enviados} arquivo(s) anexados`);
     registrar(sessao.nome, `Anexou ${enviados} arquivo(s) em ${id}`);
     setAviso({ tom: "ok", texto: `${enviados} arquivo(s) enviados. O cliente já consegue ver.` });
     await carregarAgenda();
@@ -641,14 +652,15 @@ export default function PortalDuo() {
       const cl = clientes.find((c) => c.id === dados.clienteId);
       const nums = itens.filter((i) => i.clienteId === cl.id).map((i) => Number(String(i.id).split("-")[1]) || 0);
       const novo = `${cl.prefixo}-${String(Math.max(0, ...nums) + 1).padStart(3, "0")}`;
-      const { error } = await supabase.from("posts").insert({
+      const { data: criado, error } = await supabase.from("posts").insert({
         ...campos,
         codigo: novo,
         cliente_id: dados.clienteId,
         semana_id: dados.semanaId,
         status: dados.tipo === "Gravação" ? "agendado" : "rascunho",
-      });
+      }).select("id").single();
       if (error) { setAviso({ tom: "erro", texto: "Não consegui criar o post: " + error.message }); return; }
+      await anotar(criado && criado.id, "Post criado no calendário");
       registrar(sessao.nome, `Criou ${novo} para ${cl.nome}`);
       setAviso({ tom: "ok", texto: `${novo} criado.` });
     }
@@ -774,7 +786,7 @@ export default function PortalDuo() {
   // O banco identifica o post por um código interno (uid) e guarda à parte o
   // código que aparece na tela, tipo BB-041. O portal inteiro usa o segundo
   // como identificador, então carrego os dois e guardo o uid para as gravações.
-  const linhaParaPost = (r, ajustes, arquivos) => ({
+  const linhaParaPost = (r, ajustes, arquivos, historico) => ({
     id: r.codigo, uid: r.id, clienteId: r.cliente_id, semanaId: r.semana_id,
     dia: r.dia, hora: r.hora, tipo: r.tipo, titulo: r.titulo,
     formato: r.formato || "", legenda: r.legenda || "", obs: r.obs || "",
@@ -782,17 +794,18 @@ export default function PortalDuo() {
     pacote: r.pacote_nome
       ? { nome: r.pacote_nome, caminho: r.pacote_caminho, bytes: r.pacote_tamanho || 0, tam: pesoLegivel(r.pacote_tamanho || 0) }
       : null,
-    ajustes: ajustes || [], arquivos: arquivos || [], historico: [],
+    ajustes: ajustes || [], arquivos: arquivos || [], historico: historico || [],
   });
 
   const carregarAgenda = async () => {
-    const [sem, pos, alt, arq] = await Promise.all([
+    const [sem, pos, alt, arq, hist] = await Promise.all([
       supabase.from("semanas").select("*").order("inicio"),
       supabase.from("posts").select("*").order("criado_em"),
       supabase.from("alteracoes").select("*").order("numero"),
       supabase.from("post_arquivos").select("*").is("removido_em", null).order("ordem"),
+      supabase.from("post_historico").select("*").order("criado_em"),
     ]);
-    const falha = sem.error || pos.error || alt.error || arq.error;
+    const falha = sem.error || pos.error || alt.error || arq.error || hist.error;
     if (falha) { setAviso({ tom: "erro", texto: "Não consegui carregar o calendário: " + falha.message }); return; }
     setSemanas((sem.data || []).map((r) => ({ id: r.id, clienteId: r.cliente_id, inicio: r.inicio })));
     // As alterações já pedidas ficam numa tabela à parte. Sem carregá-las, o
@@ -817,7 +830,12 @@ export default function PortalDuo() {
       if (!arqPorPost[a.post_id]) arqPorPost[a.post_id] = [];
       arqPorPost[a.post_id].push({ uid: a.id, caminho: a.caminho, nome: a.nome, tipo: a.tipo, tam: a.tamanho || 0, url: links[a.caminho] || null });
     });
-    setItens((pos.data || []).map((r) => linhaParaPost(r, porPost[r.id], arqPorPost[r.id])));
+    const histPorPost = {};
+    (hist.data || []).forEach((h) => {
+      if (!histPorPost[h.post_id]) histPorPost[h.post_id] = [];
+      histPorPost[h.post_id].push({ quando: new Date(h.criado_em).toLocaleString("pt-BR"), texto: h.texto, autor: h.autor });
+    });
+    setItens((pos.data || []).map((r) => linhaParaPost(r, porPost[r.id], arqPorPost[r.id], histPorPost[r.id])));
   };
 
   useEffect(() => {
