@@ -550,21 +550,41 @@ export default function PortalDuo() {
     setAviso({ tom: "ok", texto: `${pesoLegivel(bytes)} liberados. O post segue no histórico.` });
   };
 
+  // O arquivo vai para o Storage do Supabase, no bucket "conteudo". O caminho
+  // COMEÇA pelo código do cliente de propósito: é assim que a regra de
+  // segurança do Storage decide quem pode abrir o arquivo. Mexer nessa ordem
+  // faria o material de um cliente ficar visível para outro.
   const anexar = async (id, fileList) => {
-    const arquivos = []; let pacote = null;
-    for (const f of Array.from(fileList)) {
-      if (f.name.toLowerCase().endsWith(".zip")) {
-        pacote = { nome: f.name, bytes: f.size, tam: (f.size / 1048576).toFixed(1).replace(".", ",") + " MB", url: URL.createObjectURL(f) };
-        try { arquivos.push(...(await lerZip(await f.arrayBuffer()))); }
-        catch (e) { setAviso({ tom: "alerta", texto: "Não consegui abrir o .zip. Anexe os arquivos soltos." }); }
-      } else {
-        const [mime, tipo] = mimeDe(f.name);
-        arquivos.push({ nome: f.name, tipo, tam: f.size, url: URL.createObjectURL(f) });
+    const it = itens.find((i) => i.id === id);
+    if (!it) return;
+    const lista = Array.from(fileList);
+    if (!lista.length) return;
+    setAviso({ tom: "ok", texto: `Enviando ${lista.length} arquivo(s)…` });
+    let enviados = 0;
+    for (const f of lista) {
+      const [, tipo] = mimeDe(f.name);
+      const limpo = f.name.replace(/[^\w.-]+/g, "_");
+      const caminho = `${it.clienteId}/${it.uid}/${Date.now()}-${limpo}`;
+      const { error: erroUp } = await supabase.storage.from("conteudo").upload(caminho, f);
+      if (erroUp) { setAviso({ tom: "erro", texto: `Não consegui enviar ${f.name}: ${erroUp.message}` }); return; }
+      const ehZip = f.name.toLowerCase().endsWith(".zip");
+      const { error: erroReg } = ehZip
+        ? await supabase.from("posts").update({
+            pacote_nome: f.name, pacote_caminho: caminho, pacote_tamanho: f.size,
+          }).eq("id", it.uid)
+        : await supabase.from("post_arquivos").insert({
+            post_id: it.uid, nome: f.name, tipo, caminho, tamanho: f.size, ordem: enviados,
+          });
+      if (erroReg) {
+        await supabase.storage.from("conteudo").remove([caminho]);
+        setAviso({ tom: "erro", texto: `Enviei ${f.name} mas não consegui registrar, então desfiz: ${erroReg.message}` });
+        return;
       }
+      enviados++;
     }
-    atualizar(id, (i) => ({ ...i, pacote: pacote || i.pacote, arquivos: [...i.arquivos, ...arquivos] }));
-    registrar(sessao.nome, `Anexou ${arquivos.length} arquivo(s) em ${id}`);
-    setAviso({ tom: "ok", texto: `${arquivos.length} arquivo(s) prontos.` });
+    registrar(sessao.nome, `Anexou ${enviados} arquivo(s) em ${id}`);
+    setAviso({ tom: "ok", texto: `${enviados} arquivo(s) enviados. O cliente já consegue ver.` });
+    await carregarAgenda();
   };
 
   const salvarPost = async (dados) => {
@@ -700,22 +720,25 @@ export default function PortalDuo() {
   // O banco identifica o post por um código interno (uid) e guarda à parte o
   // código que aparece na tela, tipo BB-041. O portal inteiro usa o segundo
   // como identificador, então carrego os dois e guardo o uid para as gravações.
-  const linhaParaPost = (r, ajustes) => ({
+  const linhaParaPost = (r, ajustes, arquivos) => ({
     id: r.codigo, uid: r.id, clienteId: r.cliente_id, semanaId: r.semana_id,
     dia: r.dia, hora: r.hora, tipo: r.tipo, titulo: r.titulo,
     formato: r.formato || "", legenda: r.legenda || "", obs: r.obs || "",
     versao: r.versao, status: r.status,
-    pacote: r.pacote_nome ? { nome: r.pacote_nome, tam: "" } : null,
-    ajustes: ajustes || [], arquivos: [], historico: [],
+    pacote: r.pacote_nome
+      ? { nome: r.pacote_nome, bytes: r.pacote_tamanho || 0, tam: pesoLegivel(r.pacote_tamanho || 0) }
+      : null,
+    ajustes: ajustes || [], arquivos: arquivos || [], historico: [],
   });
 
   const carregarAgenda = async () => {
-    const [sem, pos, alt] = await Promise.all([
+    const [sem, pos, alt, arq] = await Promise.all([
       supabase.from("semanas").select("*").order("inicio"),
       supabase.from("posts").select("*").order("criado_em"),
       supabase.from("alteracoes").select("*").order("numero"),
+      supabase.from("post_arquivos").select("*").is("removido_em", null).order("ordem"),
     ]);
-    const falha = sem.error || pos.error || alt.error;
+    const falha = sem.error || pos.error || alt.error || arq.error;
     if (falha) { setAviso({ tom: "erro", texto: "Não consegui carregar o calendário: " + falha.message }); return; }
     setSemanas((sem.data || []).map((r) => ({ id: r.id, clienteId: r.cliente_id, inicio: r.inicio })));
     // As alterações já pedidas ficam numa tabela à parte. Sem carregá-las, o
@@ -726,7 +749,21 @@ export default function PortalDuo() {
       if (!porPost[a.post_id]) porPost[a.post_id] = [];
       porPost[a.post_id].push({ n: a.numero, motivo: a.motivo, pedido: a.pedido });
     });
-    setItens((pos.data || []).map((r) => linhaParaPost(r, porPost[r.id])));
+    // Os buckets são privados: o arquivo não abre por endereço direto. Para o
+    // cliente conseguir ver, o Supabase gera um link temporário, válido por uma
+    // hora. É o que impede o material de um cliente de vazar por link solto.
+    const caminhos = (arq.data || []).map((a) => a.caminho).filter(Boolean);
+    const links = {};
+    if (caminhos.length) {
+      const { data: assinados } = await supabase.storage.from("conteudo").createSignedUrls(caminhos, 3600);
+      (assinados || []).forEach((s) => { if (s.path && s.signedUrl) links[s.path] = s.signedUrl; });
+    }
+    const arqPorPost = {};
+    (arq.data || []).forEach((a) => {
+      if (!arqPorPost[a.post_id]) arqPorPost[a.post_id] = [];
+      arqPorPost[a.post_id].push({ nome: a.nome, tipo: a.tipo, tam: a.tamanho || 0, url: links[a.caminho] || null });
+    });
+    setItens((pos.data || []).map((r) => linhaParaPost(r, porPost[r.id], arqPorPost[r.id])));
   };
 
   useEffect(() => {
