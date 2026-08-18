@@ -328,8 +328,8 @@ export default function PortalDuo() {
   const [usuarios, setUsuarios] = useState([]);
   const [semanas, setSemanas] = useState([]);
   const [itens, setItens] = useState([]);
-  const [metricas, setMetricas] = useState(METRICAS_INICIAIS);
-  const [registrosM, setRegistrosM] = useState(REGISTROS_INICIAIS);
+  const [metricas, setMetricas] = useState([]);
+  const [registrosM, setRegistrosM] = useState([]);
   const [documentos, setDocumentos] = useState(DOCUMENTOS_INICIAIS);
   const [notificacoes, setNotificacoes] = useState([
     { id: "n1", para: "adm", texto: "Café da Serra ainda não acessou o portal", quando: "ontem · 18:00", lida: true },
@@ -824,6 +824,7 @@ export default function PortalDuo() {
     if (!sessao) return;
     carregarClientes();
     carregarAgenda();
+    carregarMetricas();
     if (sessao.tipo === "adm") carregarAcessos();
   }, [sessao?.id]);
 
@@ -924,17 +925,85 @@ export default function PortalDuo() {
   };
 
   /* ---- métricas ---- */
-  const salvarPeriodo = (dados) => {
-    if (dados.id) setRegistrosM((p) => p.map((r) => (r.id === dados.id ? { ...r, ...dados } : r)));
-    else setRegistrosM((p) => [...p, { ...dados, id: "r" + Date.now().toString().slice(-6), clienteId }]);
+  // O banco guarda em três tabelas: a métrica (Seguidores), o período (Agosto)
+  // e o valor no cruzamento das duas. A tela junta isso num objeto só.
+  const carregarMetricas = async () => {
+    const [met, per, val] = await Promise.all([
+      supabase.from("metricas").select("*").order("ordem"),
+      supabase.from("metrica_periodos").select("*").order("data"),
+      supabase.from("metrica_valores").select("*"),
+    ]);
+    const falha = met.error || per.error || val.error;
+    if (falha) { setAviso({ tom: "erro", texto: "Não consegui carregar as métricas: " + falha.message }); return; }
+    setMetricas((met.data || []).map((m) => ({ id: m.id, clienteId: m.cliente_id, nome: m.nome, unidade: m.unidade || "" })));
+    const porPeriodo = {};
+    (val.data || []).forEach((v) => {
+      if (!porPeriodo[v.periodo_id]) porPeriodo[v.periodo_id] = {};
+      porPeriodo[v.periodo_id][v.metrica_id] = v.valor === null ? null : Number(v.valor);
+    });
+    setRegistrosM((per.data || []).map((r) => ({
+      id: r.id, clienteId: r.cliente_id, periodo: r.periodo, data: r.data, valores: porPeriodo[r.id] || {},
+    })));
+  };
+
+  const salvarPeriodo = async (dados) => {
+    let periodoId = dados.id;
+    if (periodoId) {
+      const { error } = await supabase.from("metrica_periodos")
+        .update({ periodo: dados.periodo, data: dados.data }).eq("id", periodoId);
+      if (error) { setAviso({ tom: "erro", texto: "Não consegui salvar: " + error.message }); return; }
+    } else {
+      const { data, error } = await supabase.from("metrica_periodos")
+        .insert({ cliente_id: clienteId, periodo: dados.periodo, data: dados.data })
+        .select("id").single();
+      if (error) { setAviso({ tom: "erro", texto: "Não consegui criar o período: " + error.message }); return; }
+      periodoId = data.id;
+    }
+    // Um valor por métrica. O upsert deixa reeditar o mesmo período sem duplicar.
+    const linhas = Object.entries(dados.valores || {})
+      .filter(([, v]) => v !== "" && v !== null && v !== undefined)
+      .map(([metricaId, v]) => ({ periodo_id: periodoId, metrica_id: metricaId, valor: Number(v) }));
+    if (linhas.length) {
+      const { error } = await supabase.from("metrica_valores").upsert(linhas, { onConflict: "periodo_id,metrica_id" });
+      if (error) { setAviso({ tom: "erro", texto: "Não consegui salvar os números: " + error.message }); return; }
+    }
     registrar(sessao.nome, `Registrou métricas de ${cliente.nome} · ${dados.periodo}`);
     setEditando(null);
     setAviso({ tom: "ok", texto: "Período salvo." });
+    await carregarMetricas();
   };
-  const excluirPeriodo = (id) => { setRegistrosM((p) => p.filter((r) => r.id !== id)); setEditando(null); };
-  const criarMetrica = (nome, unidade) => {
-    setMetricas((p) => [...p, { id: "m" + Date.now().toString().slice(-6), clienteId, nome, unidade }]);
+
+  const excluirPeriodo = async (id) => {
+    const { error } = await supabase.from("metrica_periodos").delete().eq("id", id);
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui excluir o período: " + error.message }); return; }
+    setEditando(null);
+    setAviso({ tom: "alerta", texto: "Período removido." });
+    await carregarMetricas();
+  };
+
+  const criarMetrica = async (nome, unidade) => {
+    const { error } = await supabase.from("metricas")
+      .insert({ cliente_id: clienteId, nome, unidade: unidade || null, ordem: metricas.filter((m) => m.clienteId === clienteId).length });
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui criar a métrica: " + error.message }); return; }
     setAviso({ tom: "ok", texto: "Métrica criada." });
+    await carregarMetricas();
+  };
+
+  // Apagar a métrica leva junto os números dela em todos os períodos, porque o
+  // valor não faz sentido sem a métrica a que pertence.
+  const excluirMetrica = async (id) => {
+    const m = metricas.find((x) => x.id === id);
+    if (!m) return;
+    if (!window.confirm(
+      `Apagar a métrica "${m.nome}"?\n\n` +
+      "Os números dela em todos os períodos já cadastrados serão apagados junto.\n\n" +
+      "Não tem como desfazer."
+    )) return;
+    const { error } = await supabase.from("metricas").delete().eq("id", id);
+    if (error) { setAviso({ tom: "erro", texto: "Não consegui apagar a métrica: " + error.message }); return; }
+    registrar(sessao.nome, `Apagou a métrica ${m.nome} de ${cliente.nome}`);
+    setAviso({ tom: "alerta", texto: `Métrica "${m.nome}" apagada.` });
+    await carregarMetricas();
   };
 
   /* ---- telas sem sessão ---- */
@@ -1052,7 +1121,7 @@ export default function PortalDuo() {
             registros={registrosM.filter((r) => r.clienteId === clienteId).sort((a, b) => a.data.localeCompare(b.data))}
             onNovoPeriodo={() => setEditando({ tipo: "periodo", periodo: "", data: paraIso(new Date()), valores: {} })}
             onEditarPeriodo={(r) => setEditando({ tipo: "periodo", ...r })}
-            onCriarMetrica={criarMetrica}
+            onCriarMetrica={criarMetrica} onExcluirMetrica={excluirMetrica}
           />
         )}
 
@@ -1882,7 +1951,7 @@ function GraficoPizza({ pontos, nome, aoPassar }) {
   );
 }
 
-function Metricas({ adm, cliente, metricas, registros, onNovoPeriodo, onEditarPeriodo, onCriarMetrica }) {
+function Metricas({ adm, cliente, metricas, registros, onNovoPeriodo, onEditarPeriodo, onCriarMetrica, onExcluirMetrica }) {
   const [sel, setSel] = useState(metricas[0] ? metricas[0].id : null);
   const [nova, setNova] = useState(null);
   const [vis, setVis] = useState("linha");
@@ -1913,8 +1982,11 @@ function Metricas({ adm, cliente, metricas, registros, onNovoPeriodo, onEditarPe
           <div className="barra-visual">
             <div className="chips-metrica">
               {metricas.map((m) => (
-                <button key={m.id} className={m.id === (metrica && metrica.id) ? "atalho baixo" : "atalho rel"}
-                  onClick={() => setSel(m.id)} disabled={vis === "tabela"}>{m.nome}</button>
+                <span key={m.id} className="chip-metrica">
+                  <button className={m.id === (metrica && metrica.id) ? "atalho baixo" : "atalho rel"}
+                    onClick={() => setSel(m.id)} disabled={vis === "tabela"}>{m.nome}</button>
+                  {adm && <button className="arq-x" title={`Apagar a métrica ${m.nome}`} onClick={() => onExcluirMetrica(m.id)}>×</button>}
+                </span>
               ))}
             </div>
             <div className="chips-metrica">
@@ -2621,6 +2693,7 @@ const CSS = `
 .nav-centro { flex: 1; text-align: center; }
 .nav-atalhos, .chips-metrica { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
 .chips-metrica { justify-content: flex-start; margin-bottom: 16px; }
+.chip-metrica { display: inline-flex; align-items: center; gap: 2px; }
 .atalho { border: 0; border-radius: 999px; padding: 7px 14px; font-size: 11px; color: var(--tinta2); }
 .atalho.baixo { color: var(--cacau); }
 .editar-semana { border-radius: 14px; padding: 16px; margin-top: 14px; }
