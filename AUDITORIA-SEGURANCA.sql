@@ -47,18 +47,31 @@ order by c.relname;
 
 
 -- ---------------------------------------------------------------
---  3. As funções com poderes elevados conferem quem chamou?
+--  3. As funções com poderes elevados são seguras?
 --
---  ESPERADO: as que aparecem aqui devem ter confere_quem_chamou = SIM.
---  Uma função com poderes elevados SEM essa checagem pode ser chamada
---  por qualquer visitante do site para fazer o que ela faz.
+--  ESPERADO: nenhuma linha com "REVISAR".
+--
+--  Função com poderes elevados ignora as regras de isolamento, então
+--  precisa se proteger de alguma forma. Há duas maneiras válidas:
+--
+--    - exigir que quem chamou seja da equipe (eh_adm)
+--    - não aceitar parâmetro nenhum e só olhar a identidade de quem
+--      chamou (auth.uid) -- assim ela não tem como ser apontada para
+--      outra pessoa, e um visitante sem login não obtém nada
+--
+--  Só é problema quem não faz nem uma nem outra.
 -- ---------------------------------------------------------------
 
 select
-  p.proname                                             as funcao,
-  case when p.prosecdef then 'poderes elevados' else 'normal' end as tipo,
-  case when pg_get_functiondef(p.oid) ilike '%eh_adm()%'
-       then 'SIM' else 'nao tem checagem' end           as confere_quem_chamou
+  p.proname as funcao,
+  coalesce(nullif(pg_get_function_identity_arguments(p.oid), ''), 'sem parâmetro') as parametros,
+  case
+    when pg_get_functiondef(p.oid) ilike '%eh_adm()%'
+         and p.proname <> 'eh_adm'                      then 'ok — exige ser da equipe'
+    when pg_get_function_identity_arguments(p.oid) = ''
+         and pg_get_functiondef(p.oid) ilike '%auth.uid()%' then 'ok — só devolve dado de quem chamou'
+    else 'REVISAR'
+  end as veredito
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public' and p.prosecdef
