@@ -528,7 +528,7 @@ export default function PortalDuo() {
   /* Depois que o post já foi ao ar, o material bruto não precisa mais ficar
      no servidor. Isto apaga os arquivos e mantém o post inteiro no histórico:
      título, legenda, versões, pedidos de alteração e datas continuam lá. */
-  const liberarEspaco = (id, semPerguntar) => {
+  const liberarEspaco = async (id, semPerguntar) => {
     const it = itens.find((i) => i.id === id);
     if (!it) return;
     const bytes = pesoDoPost(it);
