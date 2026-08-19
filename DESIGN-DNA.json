@@ -1,0 +1,253 @@
+{
+  "meta": {
+    "name": "Portal Duo Marketing",
+    "description": "Portal de clientes de uma agência de marketing brasileira. Neumorfismo bege com painéis escuros reservados aos dados de resultado. Superfície única e contínua, onde tudo emerge do mesmo material em vez de flutuar sobre ele.",
+    "source_references": [
+      "https://portal.duo-marketing.workers.dev",
+      "portal-duo-marketing.jsx (CSS embutido, fonte primária dos tokens)"
+    ],
+    "created_at": "2026-08-19"
+  },
+
+  "design_system": {
+    "color": {
+      "palette_type": "analogous",
+      "primary": { "hex": "#35302B", "role": "tinta — texto principal, botão primário sólido, fundo de avisos" },
+      "secondary": { "hex": "#706860", "role": "tinta2 — texto de apoio, rótulos, ícones inativos" },
+      "accent": { "hex": "#7A4A22", "role": "cacau — ação forte, foco de teclado, tipo de post Carrossel" },
+      "neutral": {
+        "scale": ["#DBD4CE", "#EDE7E1", "#A99E94", "#706860", "#35302B", "#332E29", "#2A2622"],
+        "usage": "O #DBD4CE é o chão de tudo — não é fundo, é o material de onde as peças são esculpidas. A escala escura (#332E29, #2A2622) é reservada e derivada da tinta, não de cinza neutro."
+      },
+      "semantic": {
+        "success": "#55684F (sage) no claro, #9CC08C no escuro",
+        "warning": "#8C6D2E (mel)",
+        "error": "#A4522F (brasa) no claro, #E08A63 no escuro",
+        "info": "#4C5A66 (ardósia)"
+      },
+      "surface": {
+        "background": "#DBD4CE",
+        "card": "#DBD4CE (mesma cor do fundo — a separação é feita por sombra, nunca por cor)",
+        "elevated": "#2A2622 (painel de métricas e caixa de login)"
+      },
+      "contrast_strategy": "Contraste por profundidade, não por cor: quase tudo é o mesmo bege, e o que separa as camadas é a direção da luz. O escuro entra só onde a informação é o produto entregue — resultados e a porta de entrada. Cada cor de acento tem uma variante clareada obrigatória para uso sobre o escuro, porque as originais têm luminosidade próxima do fundo escuro."
+    },
+
+    "typography": {
+      "type_scale": {
+        "display": { "size": "54px", "weight": "300", "line_height": "1", "tracking": "0.16em" },
+        "heading_1": { "size": "clamp(21px, 3.4vw, 30px)", "weight": "300", "line_height": "1.2", "tracking": "-0.01em" },
+        "heading_2": { "size": "21px", "weight": "300", "line_height": "1.3", "tracking": "0" },
+        "heading_3": { "size": "12px", "weight": "400", "line_height": "1.4", "tracking": "0.18em" },
+        "body": { "size": "14px", "weight": "400", "line_height": "1.55", "tracking": "0" },
+        "body_small": { "size": "13px", "weight": "400", "line_height": "1.5", "tracking": "0" },
+        "caption": { "size": "11px", "weight": "400", "line_height": "1.55", "tracking": "0" },
+        "overline": { "size": "10px", "weight": "400", "line_height": "1.4", "tracking": "0.16em" }
+      },
+      "font_families": {
+        "heading": "Poppins",
+        "body": "Poppins",
+        "mono": "nenhuma — dados usam Poppins com font-variant-numeric: tabular-nums"
+      },
+      "font_style_notes": "Poppins geométrica em todo o sistema, com uma única exceção deliberada: a marca DUO e o campo de assinatura usam Jost 300. Pesos leves dominam os títulos (300), invertendo a convenção de título pesado — o tamanho e o espaçamento fazem a hierarquia, não a espessura. Versalete generoso (0.14–0.18em) nos rótulos, apertado (-0.01em) nos títulos grandes. Nenhuma fonte monoespaçada: alinhamento de números resolvido por tabular-nums."
+    },
+
+    "spacing": {
+      "base_unit": "4px",
+      "scale": ["4px", "6px", "8px", "11px", "14px", "18px", "22px", "26px", "36px"],
+      "content_density": "comfortable",
+      "section_rhythm": "Cabeçalho de seção com 36px acima e 14px abaixo — o respiro fica antes do título, agrupando-o com o conteúdo que ele nomeia, não com o que veio antes."
+    },
+
+    "layout": {
+      "grid_system": "flexbox com menu lateral fixo de 190px (60px recolhido) e conteúdo fluido; grade automática de cartões",
+      "max_content_width": "1160px",
+      "columns": "auto-fill, minmax(310px, 1fr) nos cartões; 7 colunas fixas no calendário semanal",
+      "gutter": "18px",
+      "breakpoints": ["860px (menu lateral vira barra rolável)", "660px", "560px"],
+      "alignment_tendency": "strict grid com cabeçalhos centralizados no calendário"
+    },
+
+    "shape": {
+      "border_radius": { "small": "10px", "medium": "14px", "large": "22px", "pill": "999px" },
+      "border_usage": "quase none — a única borda estrutural é o fio de 1px em rgba(150,136,124,0.20) separando as colunas de dias, e a barra colorida de 3px que identifica o tipo de post",
+      "divider_style": "fio de baixíssimo contraste, cerca de metade da intensidade da sombra da paleta, para organizar sem competir com o relevo"
+    },
+
+    "elevation": {
+      "shadow_style": "soft diffused, dupla e direcional",
+      "levels": {
+        "low": "inset 3px 3px 6px rgba(150,136,124,0.42), inset -3px -3px 6px rgba(255,255,255,0.92) — afundado",
+        "medium": "-5px -5px 12px rgba(255,255,255,0.92), 5px 5px 14px rgba(150,136,124,0.42) — saliente",
+        "high": "0 10px 24px rgba(53,48,43,0.30) — só em avisos flutuantes e balões, os únicos elementos que realmente pairam"
+      },
+      "depth_cues": "Duas sombras opostas em cada peça: luz branca no canto superior esquerdo, sombra bege no inferior direito. A profundidade nunca vem de cor ou de borda. No escuro a lógica inverte: luz fraca de cima, sombra fechando embaixo."
+    },
+
+    "iconography": {
+      "style": "linear, geométrico, desenhado à mão em vetor no próprio código",
+      "stroke_weight": "1.5px no menu, 1.6px no olho, 1.7px na seta de tendência",
+      "size_scale": ["10px (seta de tendência)", "17px (menu e chevron)", "20px (olho)"],
+      "preferred_set": "nenhum — não usa biblioteca de ícones. Cada símbolo é um path escrito no arquivo, para não depender de fonte instalada nem de pacote externo"
+    },
+
+    "motion": {
+      "easing": "ease-in na ida, ease-out na volta; cubic-bezier(.4,0,.2,1) no recolher do menu",
+      "duration_scale": { "micro": "0.07s", "normal": "0.24s", "macro": "0.32s" },
+      "entrance_pattern": "afundar rápido — o toque é seco",
+      "exit_pattern": "voltar devagar — material com corpo não salta de volta",
+      "philosophy": "A assimetria entre ida e volta é a regra central: 0,07s para afundar e 0,26s para soltar. Simétrico pareceria elástico, não sólido. Toda transição respeita prefers-reduced-motion."
+    },
+
+    "components": {
+      "button_style": "pílula em relevo que afunda ao toque; variante primária sólida em tinta escura reservada à tela de entrada, onde há um caminho só",
+      "input_style": "campo afundado sem borda, raio 10px, com foco em contorno cacau de 2px",
+      "card_style": "raio 16px em relevo, mesma cor do fundo, com barra colorida de 3px identificando o tipo de conteúdo",
+      "navigation_pattern": "menu lateral recolhível com ícone e rótulo; o item da página aberta fica permanentemente afundado. No celular vira barra horizontal rolável com o texto sob o ícone",
+      "modal_style": "fundo escurecido com desfoque de 3px, painel em relevo com raio 18–22px",
+      "list_style": "grade de cartões, nunca tabela — a exceção é a tabela de métricas, que vive no painel escuro",
+      "component_notes": "Nenhuma biblioteca de componentes. O relevo é o sistema: .rel para saliente e .baixo para afundado, e quase todo componente é a combinação dessas duas classes com raio e espaçamento."
+    }
+  },
+
+  "design_style": {
+    "aesthetic": {
+      "mood": ["calmo", "artesanal", "acolhedor", "confiável", "silencioso"],
+      "visual_metaphor": "argila ou papel prensado — peças esculpidas na mesma superfície, não empilhadas sobre ela",
+      "era_influence": "neumorfismo de 2020 com disciplina de 2026: o relevo sobrevive, o excesso decorativo não",
+      "genre": "SaaS de agência boutique, com temperatura de identidade visual de confeitaria",
+      "personality_traits": ["discreto", "meticuloso", "hospitaleiro", "sem pressa"],
+      "adjectives": ["tátil", "monocromático", "quente", "sereno", "coeso"]
+    },
+    "visual_language": {
+      "complexity": "minimal",
+      "ornamentation": "subtle accents",
+      "whitespace_usage": "generoso e ritmado, com o respiro sempre antes do título",
+      "visual_weight_distribution": "distribuída e plana no claro; concentrada onde o escuro entra",
+      "focal_strategy": "progressive reveal — o escuro marca o que importa em cada tela, e é o único recurso de destaque forte do sistema",
+      "contrast_level": "baixo por padrão, alto e pontual nos painéis escuros",
+      "texture_usage": "nenhuma textura aplicada; a sensação de material vem inteiramente da sombra dupla"
+    },
+    "composition": {
+      "hierarchy_method": "spatial isolation e profundidade, com apoio de escala tipográfica",
+      "balance_type": "asymmetric — menu à esquerda, conteúdo fluido à direita",
+      "flow_direction": "vertical, da esquerda para a direita, com o menu como âncora fixa",
+      "grouping_strategy": "cartões como unidades táteis; agrupamento por proximidade e por barra colorida de tipo",
+      "negative_space_role": "estrutural — é o vazio entre as peças que revela o relevo. Comprimir o espaçamento destruiria o sistema"
+    },
+    "imagery": {
+      "photo_treatment": "sem tratamento; foto de cliente aparece crua dentro de moldura afundada",
+      "illustration_style": "nenhuma ilustração — só ícones de traço desenhados no código",
+      "graphic_elements": "barras coloridas de tipo, pastilhas de status, selo de tendência com seta",
+      "pattern_usage": "nenhum padrão de fundo",
+      "image_shape": "retângulo com raio 14px, sempre afundado na superfície"
+    },
+    "interaction_feel": {
+      "feedback_style": "físico — o elemento responde afundando sob o dedo",
+      "hover_behavior": "sombra encolhe levemente, sugerindo aproximação; ações destrutivas revelam cor só no hover",
+      "transition_personality": "smooth glide assimétrico",
+      "loading_style": "texto simples no lugar do conteúdo, sem esqueleto animado nem giro",
+      "microinteraction_density": "moderada e funcional — cada animação informa um estado, nenhuma é decorativa"
+    },
+    "brand_voice_in_ui": {
+      "tone": "direto e humano, em português coloquial cuidadoso",
+      "formality": "informal com precisão — trata o usuário por você, sem jargão técnico",
+      "cta_style": "direct imperative curto: Entrar, Recolher, Aprovar, Liberar espaço",
+      "empty_state_approach": "explica o motivo do vazio e aponta o próximo passo, em vez de só constatar. Distingue o vazio de quem pode agir do vazio de quem só aguarda",
+      "error_tone": "nomeia o que houve e o que fazer, sem pedir desculpas nem culpar o usuário. Falha de rede nunca é tratada como erro de digitação"
+    }
+  },
+
+  "visual_effects": {
+    "overview": {
+      "effect_intensity": "subtle-accent",
+      "performance_tier": "lightweight",
+      "fallback_strategy": "reduce to CSS — toda animação está sob prefers-reduced-motion, e o portal permanece inteiramente usável sem nenhuma delas",
+      "primary_technology": "CSS only, com SVG inline animado por estado do React"
+    },
+    "background_effects": {
+      "type": "none",
+      "description": "Fundo sólido #DBD4CE. A ausência é deliberada: qualquer gradiente ou ruído destruiria a leitura do relevo, que depende de uma superfície uniforme para a sombra fazer sentido.",
+      "technology": "none",
+      "params": { "color_palette": ["#DBD4CE"], "speed": "n/a", "density": "n/a", "opacity": "1", "blend_mode": "normal" }
+    },
+    "particle_systems": {
+      "enabled": false,
+      "type": "none", "description": "n/a", "technology": "none",
+      "params": { "count": "0", "shape": "n/a", "size_range": "n/a", "movement_pattern": "n/a", "color_behavior": "n/a", "interaction": "none", "spawn_area": "n/a" }
+    },
+    "3d_elements": {
+      "enabled": false,
+      "type": "none", "description": "n/a", "technology": "none",
+      "params": { "renderer": "n/a", "lighting": "n/a", "camera": "n/a", "materials": "n/a", "geometry": "n/a", "post_processing": [], "interaction_model": "none" }
+    },
+    "shader_effects": {
+      "enabled": false,
+      "type": "none", "description": "n/a", "technology": "none",
+      "params": { "uniforms": [], "vertex_manipulation": "n/a", "fragment_output": "n/a", "noise_type": "n/a", "distortion": "n/a" }
+    },
+    "scroll_effects": {
+      "parallax": { "enabled": false, "layers": "0", "depth_range": "n/a", "speed_curve": "n/a" },
+      "scroll_triggered_animations": { "enabled": false, "trigger_points": "n/a", "animation_type": "none", "scrub_behavior": "n/a" },
+      "scroll_morphing": { "enabled": false, "description": "n/a" }
+    },
+    "text_effects": {
+      "type": "3d-extrude",
+      "description": "A marca DUO é texto puro em Jost 300 com quatro camadas de text-shadow — duas claras acima à esquerda, duas escuras abaixo à direita — produzindo relevo esculpido na superfície. Nunca é imagem, e não deve ser convertida em uma: o efeito herda a cor do fundo e acompanha qualquer mudança de paleta.",
+      "technology": "CSS text-shadow",
+      "params": {
+        "split_strategy": "none",
+        "animation_per_unit": "none",
+        "stagger": "0",
+        "effect_style": "letterpress em alto-relevo, luz a 315 graus"
+      }
+    },
+    "cursor_effects": {
+      "enabled": false,
+      "type": "none", "description": "n/a",
+      "params": { "shape": "n/a", "size": "n/a", "blend_mode": "n/a", "trail": "n/a", "interaction_zone": "n/a" }
+    },
+    "image_effects": {
+      "type": "none",
+      "description": "Imagens aparecem sem filtro, dentro de moldura afundada. Vídeos de cliente usam player nativo.",
+      "technology": "none",
+      "params": { "filter_pipeline": [], "hover_transform": "none", "reveal_animation": "none", "distortion_type": "n/a" }
+    },
+    "glassmorphism_neumorphism": {
+      "enabled": true,
+      "style": "neumorphic-light com painéis neumorphic-dark",
+      "params": {
+        "blur_radius": "9–14px nas sombras; backdrop-filter blur(3px) apenas no fundo de modais",
+        "transparency": "sombras a 0.92 de luz e 0.42 de sombra no claro; 0.07 e 0.50 no escuro",
+        "border_treatment": "sem borda — a única definição de contorno é a sombra",
+        "shadow_type": "dupla e oposta, alternando entre externa (saliente) e inset (afundado)",
+        "light_source_angle": "315 graus, constante em todo o sistema, inclusive nos painéis escuros"
+      }
+    },
+    "canvas_drawings": {
+      "enabled": false,
+      "type": "data-visualization",
+      "description": "Os três gráficos são SVG gerados pela recharts, não Canvas. A escolha importa: SVG mantém o texto selecionável e acessível, e escala sem perda.",
+      "technology": "recharts (SVG)",
+      "params": {
+        "draw_method": "SVG declarativo",
+        "animation_loop": "nenhum — animação só na entrada e no hover",
+        "color_scheme": ["#C9976A", "#8CA3B3", "#93AC8B", "#D0AC63", "#DD8A63", "#A99E94"],
+        "responsiveness": "ResponsiveContainer",
+        "interaction": "hover destaca a fatia ou a barra e abre balão com o valor"
+      }
+    },
+    "svg_animations": {
+      "enabled": true,
+      "type": "path-draw e morph-shapes",
+      "description": "Duas animações, ambas funcionais. O olho da senha troca entre dois desenhos sobrepostos — contorno com pupila e arco com cinco cílios — com opacidade e escala vertical cruzadas. O chevron do menu tem duas setas: a externa sai de cena enquanto a interna gira meia volta, contando a direção do movimento em vez de apenas indicar que algo muda.",
+      "params": {
+        "animation_method": "estilo inline controlado por estado do React, não classes CSS",
+        "path_morphing": "cross-fade entre dois grupos, com scaleY simultâneo",
+        "stroke_animation": "stroke-dashoffset disponível no sistema, hoje não usado após a troca do olho",
+        "filter_effects": "nenhum"
+      }
+    },
+    "composite_notes": "O sistema tem uma regra que atravessa as três dimensões: a luz vem sempre de 315 graus, e é isso que faz o conjunto parecer um material só em vez de uma coleção de componentes. Duas consequências práticas foram aprendidas na prática e valem registro. Primeira: toda cor de acento precisa de uma variante clareada para o escuro, porque as cores da marca têm luminosidade próxima do #2A2622 e desaparecem nele — foi assim que nasceram o --cacau-claro e a paleta clara dos gráficos. Segunda: o escuro só é legível como hierarquia enquanto for raro. Ele marca duas coisas, os resultados entregues ao cliente e a porta de entrada; espalhá-lo pelo resto do portal o transformaria em decoração e apagaria o contraste que hoje orienta a leitura. O portal não usa Canvas, WebGL, parallax nem scroll-trigger, e a ausência é uma escolha coerente: o público é uma equipe de duas pessoas e clientes acessando pelo celular, e o custo de qualquer um desses efeitos não se pagaria."
+  }
+}
