@@ -304,12 +304,30 @@ const codigoAssinatura = () => "DUO-" + Math.random().toString(16).slice(2, 10).
 
 function Marca({ tamanho = "p" }) { return <span className={`marca marca-${tamanho}`}>DUO</span>; }
 
+// A pálpebra e a pupila giram em torno do centro do desenho, não do canto.
+const ANIM_OLHO = {
+  transformBox: "view-box",
+  transformOrigin: "12px 12px",
+  transition: "transform .24s ease-out, opacity .18s ease-out",
+};
+
 function Olho({ cortado }) {
   return (
+    // A animação vai no próprio desenho, e não em classe de CSS: as regras de
+    // estado não venciam o estilo antigo do ícone, e aqui não há disputa.
+    // O risco fica sempre presente, escondido pelo tracejado — é o que faz ele
+    // SE DESENHAR ao fechar, em vez de piscar pronto do nada.
     <svg viewBox="0 0 24 24" className="icone-olho" aria-hidden="true">
-      <path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z" />
-      <circle cx="12" cy="12" r="3.2" />
-      {cortado && <line x1="4" y1="20" x2="20" y2="4" className="olho-risco" />}
+      <path
+        d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z"
+        style={{ ...ANIM_OLHO, transform: cortado ? "scaleY(0.32)" : "scaleY(1)" }}
+      />
+      <circle cx="12" cy="12" r="3.2"
+        style={{ ...ANIM_OLHO, transform: cortado ? "scale(0.15)" : "scale(1)", opacity: cortado ? 0 : 1 }}
+      />
+      <line x1="4" y1="20" x2="20" y2="4" className="olho-risco"
+        style={{ strokeDasharray: 23, strokeDashoffset: cortado ? 0 : 23, transition: "stroke-dashoffset .24s ease-out" }}
+      />
     </svg>
   );
 }
@@ -2703,6 +2721,10 @@ const CSS = `
   --noite-sombra: rgba(0,0,0,0.5);
   --noite-tinta: #EAE4DE;
   --noite-tinta2: #A99E94;
+  /* O --cacau tem quase a mesma luminosidade do fundo escuro, e ali a linha do
+     gráfico fica suja em vez de limpa. Este é o mesmo marrom, clareado só o
+     necessário para respirar no escuro. No claro continua valendo o --cacau. */
+  --cacau-claro: #C9976A;
 
   background: var(--base);
   color: var(--tinta);
@@ -2792,7 +2814,18 @@ const CSS = `
 .nav-centro { flex: 1; text-align: center; }
 .nav-atalhos, .chips-metrica { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
 .chips-metrica { justify-content: flex-start; margin-bottom: 16px; }
-.chip-metrica { display: inline-flex; align-items: center; gap: 2px; }
+/* O x era do tamanho do nome e vermelho o tempo todo, competindo com a métrica
+   em vez de servi-la. Agora fica discreto e só ganha cor ao passar o mouse —
+   apagar métrica é raro, ver o nome é constante. */
+.chip-metrica { display: inline-flex; align-items: center; }
+.chip-metrica .arq-x {
+  width: 18px; height: 18px; margin-left: -6px; border-radius: 50%;
+  font-size: 13px; line-height: 1; color: var(--tinta2); opacity: 0.45;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity .18s ease, color .18s ease, background .18s ease;
+}
+.chip-metrica:hover .arq-x { opacity: 1; }
+.chip-metrica .arq-x:hover { color: var(--brasa); background: rgba(164,82,47,0.12); }
 .atalho { border: 0; border-radius: 999px; padding: 7px 14px; font-size: 11px; color: var(--tinta2); }
 .atalho.baixo { color: var(--cacau); }
 .editar-semana { border-radius: 14px; padding: 16px; margin-top: 14px; }
@@ -2949,6 +2982,16 @@ button.card:hover { transform: translateY(-2px); }
 .gcaixa .g-rotulo { fill: var(--noite-tinta2); }
 .gcaixa .meta { color: var(--noite-tinta2); }
 .nada.baixo { color: var(--noite-tinta2); }
+/* Folga generosa embaixo e nas laterais: os rótulos do gráfico são desenhados
+   fora da área do desenho e escapavam da caixa escura. */
+.gcaixa { padding: 20px 22px 26px; }
+/* No escuro, o marrom da marca fica quase da cor do fundo. Aqui entra a versão
+   clareada — mesma cor, luminosidade suficiente para a linha ficar limpa. */
+.gcaixa .g-linha { stroke: var(--cacau-claro); }
+.gcaixa .g-ponto, .gcaixa .g-barra { fill: var(--cacau-claro); }
+.gcaixa .g-area { fill: rgba(201,151,106,0.14); }
+.gcaixa .g-fatia { stroke: var(--noite); }
+.gcaixa .pizza-miolo { fill: var(--noite); }
 
 .resumo { font-variant-numeric: tabular-nums; }
 .resumo .rotulo { color: var(--noite-tinta2); }
@@ -2992,7 +3035,22 @@ button.card:hover { transform: translateY(-2px); }
 
 /* olho */
 .icone-olho { width: 20px; height: 20px; fill: none; stroke: var(--tinta2); stroke-width: 1.6; stroke-linecap: round; display: block; }
-.olho-risco { stroke: var(--brasa); stroke-width: 1.8; }
+/* O olho fecha: a pálpebra desce, a pupila some e o risco se desenha.
+   23 é o comprimento da diagonal do risco — escondê-lo por esse tanto é o que
+   faz o traço aparecer riscando, e não surgir pronto. */
+.olho-risco {
+  stroke: var(--brasa); stroke-width: 1.8;
+  stroke-dasharray: 23; stroke-dashoffset: 23;
+  transition: stroke-dashoffset .24s ease-out;
+}
+.olho-contorno, .olho-pupila {
+  transform-box: view-box; transform-origin: 12px 12px;
+  transition: transform .24s ease-out, opacity .18s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .olho-risco, .olho-contorno, .olho-pupila { transition: none; }
+}
 
 /* chamada */
 .chamada { border-radius: 14px; padding: 16px 20px; margin-bottom: 20px; border-left: 3px solid var(--mel); }
@@ -3004,9 +3062,20 @@ button.card:hover { transform: translateY(-2px); }
 
 /* ações */
 .acoes { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
-.btn { border: 0; padding: 11px 20px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; color: var(--tinta); background: var(--base); box-shadow: -3px -3px 7px var(--luz), 3px 3px 9px var(--sombra); display: inline-block; text-decoration: none; }
+/* O relevo é a identidade: apertar tem que afundar o botão de verdade, e
+   soltar tem que devolvê-lo. A ida é rápida (o toque é seco) e a volta é mais
+   lenta, que é como material com corpo se comporta. */
+.btn { border: 0; padding: 11px 20px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; color: var(--tinta); background: var(--base); box-shadow: -3px -3px 7px var(--luz), 3px 3px 9px var(--sombra); display: inline-block; text-decoration: none;
+  transition: box-shadow .26s ease-out, transform .26s ease-out; }
 .btn:hover { box-shadow: -2px -2px 5px var(--luz), 2px 2px 6px var(--sombra); }
-.btn:active { box-shadow: inset 3px 3px 6px var(--sombra), inset -3px -3px 6px var(--luz); }
+.btn:active { box-shadow: inset 3px 3px 6px var(--sombra), inset -3px -3px 6px var(--luz); transform: translateY(1px) scale(0.985);
+  transition: box-shadow .07s ease-in, transform .07s ease-in; }
+.atalho { transition: box-shadow .26s ease-out, transform .26s ease-out; }
+.atalho:active { transform: translateY(1px) scale(0.98); transition: box-shadow .07s ease-in, transform .07s ease-in; }
+/* Quem escolhe não ver animação não vê. */
+@media (prefers-reduced-motion: reduce) {
+  .btn, .btn:active, .atalho, .atalho:active { transition: none; transform: none; }
+}
 .btn-forte { color: var(--cacau); font-weight: 500; }
 .btn-limpar { color: var(--brasa); font-weight: 500; }
 .btn-mini { padding: 8px 15px; font-size: 10px; }
