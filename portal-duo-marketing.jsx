@@ -733,14 +733,13 @@ export default function PortalDuo() {
   // Só adm chega aqui: o botão fica atrás da condição de administrador e o
   // banco recusa gravação de cliente em semanas. Os posts têm vínculo em
   // cascata, então somem junto — e somem para o cliente na mesma hora.
+  // A confirmação é feita na própria tela, não pela janelinha do navegador.
+  // O navegador oferece "impedir que esta página crie mais diálogos" depois de
+  // algumas confirmações seguidas; marcado isso, window.confirm passa a
+  // responder "não" sozinho, em silêncio, e o botão parece quebrado.
   const excluirSemana = async () => {
     if (!semana) return;
     const daSemana = itens.filter((i) => i.semanaId === semana.id);
-    if (!window.confirm(
-      `Apagar a semana de ${semana.inicio}?\n\n` +
-      `${daSemana.length} post(s) desta semana serão apagados junto, incluindo os que já estão com o cliente.\n\n` +
-      `Não tem como desfazer.`
-    )) return;
     const { error } = await supabase.from("semanas").delete().eq("id", semana.id);
     if (error) { setAviso({ tom: "erro", texto: "Não consegui excluir a semana: " + error.message }); return; }
     setSemanaId(null);
@@ -1092,11 +1091,7 @@ export default function PortalDuo() {
   const excluirMetrica = async (id) => {
     const m = metricas.find((x) => x.id === id);
     if (!m) return;
-    if (!window.confirm(
-      `Apagar a métrica "${m.nome}"?\n\n` +
-      "Os números dela em todos os períodos já cadastrados serão apagados junto.\n\n" +
-      "Não tem como desfazer."
-    )) return;
+    // Confirmação feita na tela, pelo mesmo motivo da exclusão de semana.
     const { error } = await supabase.from("metricas").delete().eq("id", id);
     if (error) { setAviso({ tom: "erro", texto: "Não consegui apagar a métrica: " + error.message }); return; }
     registrar(sessao.nome, `Apagou a métrica ${m.nome} de ${cliente.nome}`);
@@ -1374,7 +1369,7 @@ function Login({ onEntrar }) {
         <div className="campo-linha">
           <input id="lg-s" className="campo baixo" type={ver ? "text" : "password"} value={s} onChange={(e) => setS(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()} />
           <button className="olho" onClick={() => setVer(!ver)} aria-label={ver ? "Ocultar senha" : "Ver senha"} title={ver ? "Ocultar" : "Ver"}>
-            <Olho cortado={ver} />
+            <Olho cortado={!ver} />
           </button>
         </div>
         {erro && <p className="erro">{erro}</p>}
@@ -1426,6 +1421,7 @@ function Cabecalho({ titulo, apoio, acao }) {
 
 function NavSemana({ semana, semanas, adm, onTrocar, onCriar, onMover, onExcluir }) {
   const [editar, setEditar] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
   // Cliente novo começa sem nenhuma semana. Antes o componente inteiro sumia
   // aqui, junto com o botão de criar — não havia como abrir a primeira.
   // Só a equipe da Duo monta o calendário; o cliente apenas acompanha.
@@ -1472,7 +1468,16 @@ function NavSemana({ semana, semanas, adm, onTrocar, onCriar, onMover, onExcluir
           <>
             <button className="atalho rel" onClick={() => onCriar(paraIso(somaDias(paraData(semanas[semanas.length - 1].inicio), 7)))}>+ semana</button>
             <button className="atalho rel" onClick={() => setEditar(!editar)}>datas</button>
-            <button className="atalho rel atalho-risco" onClick={onExcluir}>excluir semana</button>
+            {confirmando ? (
+              <>
+                <button className="atalho rel atalho-risco" onClick={() => { onExcluir(); setConfirmando(false); }}>
+                  confirmar exclusão
+                </button>
+                <button className="atalho rel" onClick={() => setConfirmando(false)}>cancelar</button>
+              </>
+            ) : (
+              <button className="atalho rel atalho-risco" onClick={() => setConfirmando(true)}>excluir semana</button>
+            )}
           </>
         )}
       </div>
@@ -2112,6 +2117,7 @@ function GraficoPizza({ pontos, nome }) {
 
 function Metricas({ adm, cliente, metricas, registros, onNovoPeriodo, onEditarPeriodo, onCriarMetrica, onExcluirMetrica }) {
   const [sel, setSel] = useState(metricas[0] ? metricas[0].id : null);
+  const [aExcluir, setAExcluir] = useState(null);
   const [nova, setNova] = useState(null);
   const [vis, setVis] = useState("linha");
   const metrica = metricas.find((m) => m.id === sel) || metricas[0];
@@ -2143,7 +2149,16 @@ function Metricas({ adm, cliente, metricas, registros, onNovoPeriodo, onEditarPe
                 <span key={m.id} className="chip-metrica">
                   <button className={m.id === (metrica && metrica.id) ? "atalho baixo" : "atalho rel"}
                     onClick={() => setSel(m.id)} disabled={vis === "tabela"}>{m.nome}</button>
-                  {adm && <button className="arq-x" title={`Apagar a métrica ${m.nome}`} onClick={() => onExcluirMetrica(m.id)}>×</button>}
+                  {adm && (aExcluir === m.id ? (
+                    <>
+                      <button className="arq-confirma" onClick={() => { onExcluirMetrica(m.id); setAExcluir(null); }}>
+                        apagar
+                      </button>
+                      <button className="arq-x" title="Cancelar" onClick={() => setAExcluir(null)}>×</button>
+                    </>
+                  ) : (
+                    <button className="arq-x" title={`Apagar a métrica ${m.nome}`} onClick={() => setAExcluir(m.id)}>×</button>
+                  ))}
                 </span>
               ))}
             </div>
@@ -2891,6 +2906,7 @@ const CSS = `
 }
 .chip-metrica:hover .arq-x { opacity: 1; }
 .chip-metrica .arq-x:hover { color: var(--brasa); background: rgba(164,82,47,0.12); }
+.arq-confirma { border: 0; background: transparent; color: var(--brasa); font-size: 11px; font-weight: 500; padding: 2px 6px; text-transform: lowercase; }
 .atalho { border: 0; border-radius: 999px; padding: 7px 14px; font-size: 11px; color: var(--tinta2); }
 .atalho.baixo { color: var(--cacau); }
 .editar-semana { border-radius: 14px; padding: 16px; margin-top: 14px; }
