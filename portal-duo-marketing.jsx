@@ -357,6 +357,13 @@ export default function PortalDuo() {
 
   const [sessao, setSessao] = useState(null);
   const [carregandoSessao, setCarregandoSessao] = useState(true);
+  // Confirmação de ação destrutiva feita dentro do portal. A janelinha do
+  // navegador não serve: ele oferece "impedir que esta página crie mais
+  // diálogos" e, marcado isso, ela passa a responder "não" em silêncio — o
+  // botão parece quebrado sem nenhum aviso.
+  const [confirmacao, setConfirmacao] = useState(null);
+  const perguntar = (titulo, texto, rotulo, aoConfirmar) =>
+    setConfirmacao({ titulo, texto, rotulo, aoConfirmar });
   const [recuperandoSenha, setRecuperandoSenha] = useState(false);
   const [clienteId, setClienteId] = useState("c1");
   const [semanaId, setSemanaId] = useState(null);
@@ -553,29 +560,37 @@ export default function PortalDuo() {
   const recolher = async (id) => {
     const it = itens.find((i) => i.id === id);
     if (!it) return;
-    if (!window.confirm(
-      `Recolher ${id} — "${it.titulo}"?\n\n` +
-      "O post volta para rascunho e some da tela do cliente.\n\n" +
-      "Nada é apagado: título, legenda e arquivos continuam aqui para você corrigir e reenviar."
-    )) return;
-    if (!(await gravarPost(id, { status: "rascunho" }, "Recolhido pela Duo — saiu da vista do cliente"))) return;
-    registrar(sessao.nome, `Recolheu ${id}`);
-    setAviso({ tom: "ok", texto: "Post recolhido. O cliente não vê mais." });
+    perguntar(
+      `Recolher ${id}?`,
+      `"${it.titulo}" volta para rascunho e some da tela do cliente. Nada é apagado: título, legenda e arquivos continuam aqui para você corrigir e reenviar.`,
+      "Recolher",
+      async () => {
+        if (!(await gravarPost(id, { status: "rascunho" }, "Recolhido pela Duo — saiu da vista do cliente"))) return;
+        registrar(sessao.nome, `Recolheu ${id}`);
+        setAviso({ tom: "ok", texto: "Post recolhido. O cliente não vê mais." });
+      }
+    );
   };
 
   const removerArquivo = async (id, arq) => {
     if (!arq) return;
-    if (!window.confirm(`Remover "${arq.nome}" deste post?\n\nO arquivo é apagado do servidor e o espaço volta. Não tem como desfazer.`)) return;
-    if (arq.caminho) {
-      const { error } = await supabase.storage.from("conteudo").remove([arq.caminho]);
-      if (error) { setAviso({ tom: "erro", texto: "Não consegui apagar o arquivo: " + error.message }); return; }
-    }
-    const { error } = await supabase.from("post_arquivos").delete().eq("id", arq.uid);
-    if (error) { setAviso({ tom: "erro", texto: "Não consegui remover o registro: " + error.message }); return; }
-    await anotar((itens.find((i) => i.id === id) || {}).uid, `Arquivo removido: ${arq.nome}`);
-    registrar(sessao.nome, `Removeu ${arq.nome} de ${id}`);
-    setAviso({ tom: "ok", texto: `${arq.nome} removido. Anexe o certo no lugar.` });
-    await carregarAgenda();
+    perguntar(
+      "Remover este arquivo?",
+      `"${arq.nome}" é apagado do servidor e o espaço volta. Não tem como desfazer.`,
+      "Remover",
+      async () => {
+        if (arq.caminho) {
+          const { error } = await supabase.storage.from("conteudo").remove([arq.caminho]);
+          if (error) { setAviso({ tom: "erro", texto: "Não consegui apagar o arquivo: " + error.message }); return; }
+        }
+        const { error } = await supabase.from("post_arquivos").delete().eq("id", arq.uid);
+        if (error) { setAviso({ tom: "erro", texto: "Não consegui remover o registro: " + error.message }); return; }
+        await anotar((itens.find((i) => i.id === id) || {}).uid, `Arquivo removido: ${arq.nome}`);
+        registrar(sessao.nome, `Removeu ${arq.nome} de ${id}`);
+        setAviso({ tom: "ok", texto: `${arq.nome} removido. Anexe o certo no lugar.` });
+        await carregarAgenda();
+      }
+    );
   };
 
   const publicar = async (id) => {
@@ -591,12 +606,15 @@ export default function PortalDuo() {
     if (!it) return;
     const bytes = pesoDoPost(it);
     const qtd = (it.arquivos || []).length;
-    if (!semPerguntar && !window.confirm(
-      `Apagar os arquivos de "${it.titulo}"?\n\n` +
-      `${qtd} arquivo(s) · ${pesoLegivel(bytes)} serão removidos do servidor.\n\n` +
-      `O post continua registrado no histórico com legenda, versões e alterações. ` +
-      `Só o material bruto some — e não tem como desfazer.`
-    )) return;
+    if (!semPerguntar) {
+      perguntar(
+        "Apagar os arquivos deste post?",
+        `${qtd} arquivo(s) · ${pesoLegivel(bytes)} de "${it.titulo}" serão removidos do servidor. O post continua no histórico com legenda, versões e alterações — só o material bruto some. Não tem como desfazer.`,
+        `Apagar e liberar ${pesoLegivel(bytes)}`,
+        () => liberarEspaco(id, true)
+      );
+      return;
+    }
     // Quem faz a contabilidade é o banco: ele marca os arquivos, atualiza o
     // post, grava a limpeza na tabela "limpezas" e na linha do tempo, e
     // devolve os endereços para eu apagar do Storage. Fazer isso aqui, como
@@ -695,12 +713,20 @@ export default function PortalDuo() {
     if (!item) return;
     const jaVisto = ["aguardando", "aprovado", "ajuste", "publicado"].includes(item.status);
     const qtd = (item.arquivos || []).length;
-    if (!window.confirm(
-      `Excluir ${id} — "${item.titulo}"?\n\n` +
-      (jaVisto ? "O cliente já enxerga este post. Ele vai sumir da tela dele na hora.\n\n" : "") +
-      (qtd ? `${qtd} arquivo(s) serão apagados do servidor junto.\n\n` : "") +
-      "Não tem como desfazer."
-    )) return;
+    perguntar(
+      `Excluir ${id}?`,
+      `"${item.titulo}" será apagado. ` +
+      (jaVisto ? "O cliente já enxerga este post e ele vai sumir da tela dele na hora. " : "") +
+      (qtd ? `${qtd} arquivo(s) serão apagados do servidor junto. ` : "") +
+      "Não tem como desfazer.",
+      "Excluir",
+      () => excluirPostConfirmado(id)
+    );
+  };
+
+  const excluirPostConfirmado = async (id) => {
+    const item = itens.find((i) => i.id === id);
+    if (!item) return;
     // O banco apaga o registro dos arquivos em cascata, mas o Storage é outro
     // lugar e não some junto. Sem isto, apagar um post deixaria os arquivos
     // ocupando espaço para sempre, sem nada no portal apontando para eles.
@@ -991,15 +1017,19 @@ export default function PortalDuo() {
   const excluirDoc = async (id) => {
     const d = documentos.find((x) => x.id === id);
     if (!d) return;
-    if (!window.confirm(
-      `Excluir o documento "${d.nome}"?\n\n` +
+    perguntar(
+      `Excluir o documento "${d.nome}"?`,
       (d.status === "assinado"
-        ? `ATENÇÃO: este documento foi assinado por ${d.assinatura ? d.assinatura.nome : "o cliente"}. ` +
-          "Apagar destrói o registro da assinatura — nome, código e data. É a prova de que ele concordou.\n\n"
+        ? `Este documento foi assinado por ${d.assinatura ? d.assinatura.nome : "o cliente"}. Apagar destrói o registro da assinatura — nome, código e data —, que é a prova de que ele concordou. `
         : "") +
-      (["enviado", "aguardando"].includes(d.status) ? "O cliente já enxerga este documento. Ele vai sumir da tela dele.\n\n" : "") +
-      "O arquivo também é apagado do servidor. Não tem como desfazer."
-    )) return;
+      (["enviado", "aguardando"].includes(d.status) ? "O cliente já enxerga este documento e ele vai sumir da tela dele. " : "") +
+      "O arquivo também é apagado do servidor. Não tem como desfazer.",
+      "Excluir documento",
+      () => excluirDocConfirmado(d)
+    );
+  };
+
+  const excluirDocConfirmado = async (d) => {
     if (d.caminho) {
       const { error } = await supabase.storage.from("documentos").remove([d.caminho]);
       if (error) { setAviso({ tom: "erro", texto: "Não consegui apagar o arquivo: " + error.message }); return; }
@@ -1202,7 +1232,7 @@ export default function PortalDuo() {
         {tela === "entregas" && (
           <Entregas
             itens={daSemana} dias={diasDaSemana(semana)} cliente={cliente} semana={semana}
-            onAbrir={setAbertoId} onAnexar={anexar} onEnviar={enviarVersao} onPublicar={publicar} onLiberar={liberarEspaco} onExcluir={excluirPost} onRecolher={recolher} onRemoverArquivo={removerArquivo}
+            onAbrir={setAbertoId} onAnexar={anexar} onEnviar={enviarVersao} onPublicar={publicar} onLiberar={liberarEspaco} onExcluir={excluirPost} onRecolher={recolher} onRemoverArquivo={removerArquivo} onPerguntar={perguntar}
             onEditar={(i) => setEditando({ ...i, tipoPost: i.tipo, tipo: "post" })}
           />
         )}
@@ -1247,6 +1277,21 @@ export default function PortalDuo() {
           onFechar={() => setAbertoId(null)} onAprovar={() => aprovar(aberto.id)} onAjuste={(m, p) => pedirAjuste(aberto.id, m, p)}
           onEditar={() => { setEditando({ ...aberto, tipoPost: aberto.tipo, tipo: "post" }); setAbertoId(null); }}
         />
+      )}
+
+      {confirmacao && (
+        <div className="fundo" onClick={() => setConfirmacao(null)}>
+          <div className="confirma rel" onClick={(e) => e.stopPropagation()}>
+            <h3 className="painel-titulo">{confirmacao.titulo}</h3>
+            <p className="apoio">{confirmacao.texto}</p>
+            <div className="acoes">
+              <button className="btn btn-limpar" onClick={() => { const f = confirmacao.aoConfirmar; setConfirmacao(null); f(); }}>
+                {confirmacao.rotulo}
+              </button>
+              <button className="btn btn-leve" onClick={() => setConfirmacao(null)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {editando && editando.tipo === "post" && (
@@ -1737,7 +1782,7 @@ function Cartao({ item, dias, onAbrir }) {
 
 /* ---------------------------- aprovações ---------------------------- */
 
-function Entregas({ itens, dias, cliente, semana, onAbrir, onAnexar, onEnviar, onPublicar, onEditar, onLiberar, onExcluir, onRecolher, onRemoverArquivo }) {
+function Entregas({ itens, dias, cliente, semana, onAbrir, onAnexar, onEnviar, onPublicar, onEditar, onLiberar, onExcluir, onRecolher, onRemoverArquivo, onPerguntar }) {
   const [filtro, setFiltro] = useState(null);
   const conta = (s) => itens.filter((i) => statusVisivel(i) === s).length;
   const todos = itens.filter((i) => i.tipo !== "Gravação");
@@ -1775,11 +1820,12 @@ function Entregas({ itens, dias, cliente, semana, onAbrir, onAnexar, onEnviar, o
           </div>
           {liberavel > 0 && (
             <button className="btn btn-leve btn-mini" onClick={() => {
-              if (window.confirm(
-                `Apagar os arquivos de ${soltos.length} post(s) já publicado(s)?\n\n` +
-                `${pesoLegivel(liberavel)} serão removidos do servidor.\n\n` +
-                `Os posts continuam no histórico. Não tem como desfazer.`
-              )) soltos.forEach((i) => onLiberar(i.id, true));
+              onPerguntar(
+                "Apagar os arquivos de todos os posts publicados?",
+                `${soltos.length} post(s) · ${pesoLegivel(liberavel)} serão removidos do servidor. Os posts continuam no histórico. Não tem como desfazer.`,
+                `Apagar e liberar ${pesoLegivel(liberavel)}`,
+                () => soltos.forEach((i) => onLiberar(i.id, true))
+              );
             }}>
               Liberar tudo que já foi ao ar
             </button>
@@ -2898,6 +2944,10 @@ const CSS = `
    em vez de servi-la. Agora fica discreto e só ganha cor ao passar o mouse —
    apagar métrica é raro, ver o nome é constante. */
 .chip-metrica { display: inline-flex; align-items: center; }
+/* Caixa de confirmação de ação destrutiva. */
+.confirma { max-width: 440px; width: 100%; border-radius: 18px; padding: 26px 28px; }
+.confirma .painel-titulo { margin: 0 0 8px; }
+.confirma .acoes { margin-top: 20px; }
 .chip-metrica .arq-x {
   width: 18px; height: 18px; margin-left: -6px; border-radius: 50%;
   font-size: 13px; line-height: 1; color: var(--tinta2); opacity: 0.45;
