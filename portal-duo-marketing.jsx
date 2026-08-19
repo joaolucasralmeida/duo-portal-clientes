@@ -305,6 +305,37 @@ const codigoAssinatura = () => "DUO-" + Math.random().toString(16).slice(2, 10).
 
 function Marca({ tamanho = "p" }) { return <span className={`marca marca-${tamanho}`}>DUO</span>; }
 
+// Seta de tendência dos cartões de métrica. Desenhada em vetor pelo mesmo
+// motivo do ícone do olho: não depende de nenhuma fonte ou biblioteca externa.
+// Ícones do menu lateral. Traço simples, na mesma espessura do olho, para não
+// virarem ilustração — eles apoiam a leitura do texto, não substituem.
+const DESENHOS_ABA = {
+  clientes: "M4 19v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1M12 3.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7",
+  agenda: "M4 6.5h16v14H4zM4 10.5h16M8.5 3.5v4M15.5 3.5v4",
+  entregas: "M4.5 12.5l4.5 4.5 10-10",
+  aprovar: "M4.5 12.5l4.5 4.5 10-10",
+  metricas: "M4 20V10M10 20V4M16 20v-7M22 20H2",
+  documentos: "M6 3.5h8l5 5v12H6zM14 3.5v5h5M9 13h7M9 16.5h5",
+  perfil: "M4 20v-1a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5v1M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8",
+  acessos: "M7 10.5V8a5 5 0 0 1 10 0v2.5M5.5 10.5h13v10h-13zM12 14.5v2.5",
+  historico: "M12 7v5l3.5 2M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17",
+};
+
+function IconeAba({ nome }) {
+  const d = DESENHOS_ABA[nome];
+  if (!d) return null;
+  return <svg viewBox="0 0 24 24" className="icone-aba" aria-hidden="true"><path d={d} /></svg>;
+}
+
+function Seta({ paraCima }) {
+  return (
+    <svg viewBox="0 0 12 12" className="icone-seta" aria-hidden="true"
+      style={{ transform: paraCima ? "none" : "rotate(180deg)" }}>
+      <path d="M6 10V2M6 2L2.5 5.5M6 2l3.5 3.5" />
+    </svg>
+  );
+}
+
 // A pálpebra e a pupila giram em torno do centro do desenho, não do canto.
 const ANIM_OLHO = {
   transformBox: "view-box",
@@ -1171,11 +1202,17 @@ export default function PortalDuo() {
         </div>
       </header>
 
-      <nav className="abas">
-        {abas.map(([k, r]) => (
-          <button key={k} className={tela === k ? "aba aba-on" : "aba"} onClick={() => setTela(k)}>{r}</button>
-        ))}
-      </nav>
+      {/* Menu lateral no computador, barra rolável no celular. Sete itens em
+          abas horizontais já estavam apertados e não cabem em tela pequena. */}
+      <div className="quadro">
+        <nav className="lateral">
+          {abas.map(([k, r]) => (
+            <button key={k} className={tela === k ? "item-lat item-lat-on" : "item-lat"} onClick={() => setTela(k)}>
+              <IconeAba nome={k} />
+              <span className="item-lat-txt">{r}</span>
+            </button>
+          ))}
+        </nav>
 
       <main className="corpo">
         {(tela === "agenda" || tela === "entregas") && (
@@ -1268,6 +1305,7 @@ export default function PortalDuo() {
           />
         )}
       </main>
+      </div>
 
       {aviso && <div className={`aviso aviso-${aviso.tom}`}>{aviso.texto}</div>}
 
@@ -2309,7 +2347,17 @@ function Metricas({ adm, cliente, metricas, registros, onNovoPeriodo, onEditarPe
                 const ultimo = [...registros].reverse().find((r) => r.valores[m.id] !== undefined && r.valores[m.id] !== "");
                 return (
                   <div className="resumo baixo" key={m.id}>
-                    <span className="rotulo sem-topo">{m.nome}</span>
+                    <div className="resumo-topo">
+                      <span className="rotulo sem-topo">{m.nome}</span>
+                      {/* A pastilha diz a direção antes de a pessoa ler o número.
+                          É a leitura que o cliente quer primeiro: subiu ou caiu. */}
+                      {v && v.pct !== null && (
+                        <span className={`selo-tend ${v.abs >= 0 ? "sobe" : "desce"}`}>
+                          <Seta paraCima={v.abs >= 0} />
+                          {`${v.pct > 0 ? "+" : ""}${v.pct.toFixed(1)}%`}
+                        </span>
+                      )}
+                    </div>
                     <span className="resumo-num">{ultimo ? num(ultimo.valores[m.id]) : "—"}</span>
                     <span className={v && v.abs > 0 ? "resumo-var td-sobe" : v && v.abs < 0 ? "resumo-var td-desce" : "resumo-var"}>
                       {v ? `${v.abs > 0 ? "+" : ""}${num(v.abs)} desde o início` : "sem comparativo"}
@@ -2951,6 +2999,33 @@ const CSS = `
 /* A aba da página aberta fica afundada e assim permanece. Ao trocar, uma solta
    enquanto a outra afunda — o movimento mostra para onde você foi.
    A ida é rápida e a volta mais lenta, igual aos outros botões. */
+/* ---------------- menu lateral ----------------
+   Sete itens não cabiam bem em abas horizontais, e no celular ficavam
+   espremidos. Na lateral eles têm espaço para crescer e ganham ícone. */
+.quadro { display: flex; align-items: flex-start; gap: 8px; padding: 0 26px; }
+.lateral { display: flex; flex-direction: column; gap: 4px; width: 190px; flex-shrink: 0; position: sticky; top: 16px; }
+.quadro .corpo { flex: 1; min-width: 0; padding-left: 18px; padding-right: 0; }
+.item-lat {
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  border: 0; background: transparent; border-radius: 12px;
+  padding: 11px 14px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--tinta2); text-align: left;
+  transition: box-shadow .3s ease-out, color .3s ease-out, transform .3s ease-out;
+}
+.item-lat:active { transform: translateY(1px) scale(0.99); transition-duration: .07s; }
+.item-lat-on { color: var(--tinta); box-shadow: inset 2px 2px 5px var(--sombra); transition-duration: .12s; }
+.item-lat-txt { flex: 1; }
+.icone-aba { width: 17px; height: 17px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* No celular a lateral vira uma barra que rola de lado, com o texto abaixo do
+   ícone — cabe o dobro de itens na mesma largura. */
+@media (max-width: 860px) {
+  .quadro { flex-direction: column; gap: 0; padding: 0 14px; }
+  .lateral { flex-direction: row; width: 100%; position: static; overflow-x: auto; gap: 2px; padding-bottom: 6px; }
+  .item-lat { flex-direction: column; gap: 5px; width: auto; padding: 9px 12px; font-size: 9.5px; text-align: center; letter-spacing: 0.04em; }
+  .quadro .corpo { padding-left: 0; width: 100%; }
+}
+
 .aba { transition: box-shadow .3s ease-out, color .3s ease-out, transform .3s ease-out; }
 .aba:active { transform: translateY(1px) scale(0.98); transition-duration: .07s; }
 .aba-on { color: var(--tinta); box-shadow: inset 2px 2px 5px var(--sombra); transition-duration: .12s; }
@@ -3167,6 +3242,13 @@ button.card:hover { transform: translateY(-2px); }
 .gcaixa .g-fatia { stroke: var(--noite); }
 .gcaixa .pizza-miolo { fill: var(--noite); }
 
+/* Cartão de indicador: nome e tendência dividem a primeira linha, o número
+   domina embaixo. A pastilha dá a direção antes de a pessoa ler o valor. */
+.resumo-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.selo-tend { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 500; padding: 3px 7px 3px 5px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.selo-tend.sobe { color: #9CC08C; background: rgba(156,192,140,0.14); }
+.selo-tend.desce { color: #E08A63; background: rgba(224,138,99,0.14); }
+.icone-seta { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .resumo { font-variant-numeric: tabular-nums; }
 .resumo .rotulo { color: var(--noite-tinta2); }
 .resumo-num { color: var(--noite-tinta); letter-spacing: -0.02em; }
