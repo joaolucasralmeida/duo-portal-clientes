@@ -348,8 +348,9 @@ function Chevron({ aberto }) {
 // Recolhido, os ícones crescem conforme o cursor se aproxima — o mais próximo
 // cresce mais, os vizinhos acompanham em proporção menor. É o que faz um menu
 // de ícones sem texto continuar navegável: o alvo se oferece antes do clique.
-const ALCANCE = 96;   // até onde o cursor influencia, em pixels
-const CRESCER = 0.42; // quanto o item bem embaixo do cursor cresce
+const ALCANCE = 96;           // até onde o cursor influencia, em pixels
+const CRESCER_RECOLHIDO = 0.42; // recolhido o ícone é tudo que existe, então cresce mais
+const CRESCER_ABERTO = 0.22;    // aberto ele divide a linha com o texto, e um salto grande desequilibraria
 
 function MenuLateral({ abas, tela, onTrocar, aberta, onAlternar }) {
   const [cursorY, setCursorY] = useState(null);
@@ -364,9 +365,8 @@ function MenuLateral({ abas, tela, onTrocar, aberta, onAlternar }) {
     return () => mq.removeEventListener("change", ler);
   }, []);
 
-  // Só recolhido faz sentido: aberto, o item já tem o nome escrito e não
-  // precisa crescer para se anunciar.
-  const ativo = !aberta && !poupar && cursorY !== null;
+  const ativo = !poupar && cursorY !== null;
+  const crescer = aberta ? CRESCER_ABERTO : CRESCER_RECOLHIDO;
 
   const escalaDe = (el) => {
     if (!ativo || !el) return 1;
@@ -375,14 +375,14 @@ function MenuLateral({ abas, tela, onTrocar, aberta, onAlternar }) {
     const dist = Math.abs(cursorY - meio);
     if (dist > ALCANCE) return 1;
     // Curva suave: cresce rápido perto do cursor e desaparece na borda do alcance.
-    return 1 + CRESCER * Math.cos((dist / ALCANCE) * (Math.PI / 2)) ** 2;
+    return 1 + crescer * Math.cos((dist / ALCANCE) * (Math.PI / 2)) ** 2;
   };
 
   return (
     <nav
       className="lateral"
       ref={nav}
-      onMouseMove={(e) => { if (!aberta) setCursorY(e.clientY); }}
+      onMouseMove={(e) => setCursorY(e.clientY)}
       onMouseLeave={() => setCursorY(null)}
     >
       <button
