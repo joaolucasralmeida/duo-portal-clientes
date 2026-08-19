@@ -1434,22 +1434,21 @@ function Login({ onEntrar }) {
 
         <label className="rotulo-2" htmlFor="lg-u">E-mail</label>
         <input id="lg-u" className="campo baixo" type="email" value={u} autoComplete="username"
-          placeholder="voce@empresa.com.br"
           onChange={(e) => { setU(e.target.value); setRecado(""); }}
           onKeyDown={(e) => e.key === "Enter" && enviar()} />
 
-        <div className="rotulo-linha">
-          <label className="rotulo-2" htmlFor="lg-s">Senha</label>
-          <button type="button" className="link-discreto" onClick={esqueci} disabled={enviando}>
-            Esqueci minha senha
-          </button>
-        </div>
+        <label className="rotulo-2" htmlFor="lg-s">Senha</label>
         <div className="campo-linha">
           <input id="lg-s" className="campo baixo" type={ver ? "text" : "password"} value={s}
             autoComplete="current-password"
             onChange={(e) => setS(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()} />
           <button className="olho" onClick={() => setVer(!ver)} aria-label={ver ? "Ocultar senha" : "Ver senha"} title={ver ? "Ocultar" : "Ver"}>
             <Olho cortado={!ver} />
+          </button>
+        </div>
+        <div className="linha-esqueci">
+          <button type="button" className="link-discreto" onClick={esqueci} disabled={enviando}>
+            Esqueci minha senha
           </button>
         </div>
 
@@ -3286,17 +3285,38 @@ select.campo { appearance: none; }
 .entrada-topo .entrada-sub { margin: 10px 0 0; }
 .entrada-titulo { margin: 0 0 4px; font-size: 21px; font-weight: 400; color: var(--tinta); }
 .entrada-apoio { margin: 0 0 22px; font-size: 13px; color: var(--tinta2); line-height: 1.5; }
-.rotulo-linha { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.link-discreto { border: 0; background: transparent; padding: 0; font-size: 11px; color: var(--tinta2); text-decoration: underline; text-underline-offset: 3px; }
-.link-discreto:hover { color: var(--tinta); }
+.linha-esqueci { display: flex; justify-content: flex-end; margin-top: 10px; }
+.link-discreto { border: 0; background: transparent; padding: 0; font-size: 11px; color: var(--noite-tinta2); text-decoration: underline; text-underline-offset: 3px; }
+.link-discreto:hover { color: var(--noite-tinta); }
 .link-discreto:disabled { opacity: 0.5; }
-/* Botão sólido em vez do relevo: numa tela com um caminho só, o contraste diz
-   onde clicar sem precisar de instrução. */
-.btn-primario { background: var(--tinta); color: var(--base); box-shadow: 3px 3px 10px var(--sombra); }
-.btn-primario:hover { background: var(--tinta2); box-shadow: 2px 2px 7px var(--sombra); }
-.btn-primario:active { background: var(--tinta); box-shadow: inset 2px 2px 6px rgba(0,0,0,0.35); }
-.btn-primario:disabled { background: var(--tinta2); opacity: 0.45; box-shadow: none; }
-.recado { margin: 14px 0 0; font-size: 12px; color: var(--sage); line-height: 1.5; }
+
+/* ---------------- a caixa de entrada é escura ----------------
+   Mesmos tons do painel de métricas, então o escuro do portal é um só. Aqui
+   ele tem a função de separar: o resto da tela é o material de trabalho, e
+   esta caixa é a única coisa a fazer nesta página.
+   O relevo continua, invertido — luz fraca em cima, sombra fechando embaixo. */
+.entrada-caixa.rel {
+  background: var(--noite);
+  box-shadow: -3px -3px 12px rgba(255,255,255,0.5), 8px 10px 26px rgba(53,48,43,0.34);
+}
+.entrada-caixa .entrada-titulo { color: var(--noite-tinta); }
+.entrada-caixa .entrada-apoio { color: var(--noite-tinta2); }
+.entrada-caixa .rotulo-2 { color: var(--noite-tinta2); }
+.entrada-caixa .campo {
+  background: var(--noite-alto); color: var(--noite-tinta);
+  box-shadow: inset 3px 3px 7px var(--noite-sombra), inset -1px -1px 3px var(--noite-luz);
+}
+.entrada-caixa .campo:focus { outline: 2px solid var(--cacau-claro); outline-offset: 2px; }
+.entrada-caixa .icone-olho { stroke: var(--noite-tinta2); }
+.entrada-caixa .olho:hover .icone-olho { stroke: var(--noite-tinta); }
+/* Botão claro sobre a caixa escura: a inversão é o que o torna o ponto mais
+   luminoso da tela, e portanto o próximo passo óbvio. */
+.btn-primario { background: var(--base); color: var(--tinta); box-shadow: 0 4px 14px rgba(0,0,0,0.3); }
+.btn-primario:hover { background: #EDE7E1; }
+.btn-primario:active { background: var(--base); box-shadow: inset 2px 2px 6px var(--sombra); }
+.btn-primario:disabled { background: var(--noite-alto); color: var(--noite-tinta2); box-shadow: none; }
+.recado { margin: 14px 0 0; font-size: 12px; color: #9CC08C; line-height: 1.5; }
+.entrada-caixa .erro { color: #E08A63; }
 .entrada-rodape { max-width: 380px; margin: 0; text-align: center; font-size: 11px; color: var(--tinta2); line-height: 1.6; }
 .entrada-caixa { width: 100%; max-width: 380px; border-radius: 22px; padding: 30px 28px 28px; }
 /* A caixa de entrada é grande, e o brilho branco do relevo virava um halo
