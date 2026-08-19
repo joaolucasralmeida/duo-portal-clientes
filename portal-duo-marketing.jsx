@@ -321,6 +321,26 @@ const DESENHOS_ABA = {
   historico: "M12 7v5l3.5 2M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17",
 };
 
+// Duas setas que viram uma só ao recolher: a de fora sai de cena e a de dentro
+// gira. O movimento conta a direção — para dentro fecha, para fora abre.
+function Chevron({ aberto }) {
+  return (
+    <svg viewBox="0 0 24 24" className="icone-chevron" aria-hidden="true">
+      <path d="M14.5 8L10.5 12l4 4" style={{
+        transformBox: "view-box", transformOrigin: "12px 12px",
+        transform: aberto ? "none" : "rotate(180deg)",
+        transition: "transform .32s cubic-bezier(.4,0,.2,1)",
+      }} />
+      <path d="M19 8l-4 4 4 4" style={{
+        transformBox: "view-box", transformOrigin: "12px 12px",
+        opacity: aberto ? 0.5 : 0,
+        transform: aberto ? "none" : "translateX(-5px)",
+        transition: "opacity .2s ease-out, transform .32s cubic-bezier(.4,0,.2,1)",
+      }} />
+    </svg>
+  );
+}
+
 function IconeAba({ nome }) {
   const d = DESENHOS_ABA[nome];
   if (!d) return null;
@@ -396,6 +416,14 @@ export default function PortalDuo() {
   const perguntar = (titulo, texto, rotulo, aoConfirmar) =>
     setConfirmacao({ titulo, texto, rotulo, aoConfirmar });
   const [recuperandoSenha, setRecuperandoSenha] = useState(false);
+  // A escolha de menu recolhido fica guardada: quem prefere assim não quer
+  // reclicar toda vez que abre o portal.
+  const [lateralAberta, setLateralAberta] = useState(() => {
+    try { return localStorage.getItem("duo-menu") !== "recolhido"; } catch (e) { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("duo-menu", lateralAberta ? "aberto" : "recolhido"); } catch (e) {}
+  }, [lateralAberta]);
   const [clienteId, setClienteId] = useState("c1");
   const [semanaId, setSemanaId] = useState(null);
   const [tela, setTela] = useState("clientes");
@@ -1204,10 +1232,20 @@ export default function PortalDuo() {
 
       {/* Menu lateral no computador, barra rolável no celular. Sete itens em
           abas horizontais já estavam apertados e não cabem em tela pequena. */}
-      <div className="quadro">
+      <div className={`quadro${lateralAberta ? "" : " quadro-estreito"}`}>
         <nav className="lateral">
+          <button
+            className="recolher"
+            onClick={() => setLateralAberta((a) => !a)}
+            aria-expanded={lateralAberta}
+            title={lateralAberta ? "Recolher o menu" : "Expandir o menu"}
+          >
+            <Chevron aberto={lateralAberta} />
+            <span className="item-lat-txt">Recolher</span>
+          </button>
           {abas.map(([k, r]) => (
-            <button key={k} className={tela === k ? "item-lat item-lat-on" : "item-lat"} onClick={() => setTela(k)}>
+            <button key={k} className={tela === k ? "item-lat item-lat-on" : "item-lat"} onClick={() => setTela(k)}
+              title={lateralAberta ? undefined : r}>
               <IconeAba nome={k} />
               <span className="item-lat-txt">{r}</span>
             </button>
@@ -3046,11 +3084,44 @@ const CSS = `
 .item-lat:active { transform: translateY(1px) scale(0.99); transition-duration: .07s; }
 .item-lat-on { color: var(--tinta); box-shadow: inset 2px 2px 5px var(--sombra); transition-duration: .12s; }
 .item-lat-txt { flex: 1; }
+
+/* ---------------- recolher o menu ----------------
+   A largura, o texto e o conteúdo se movem no mesmo tempo e na mesma curva,
+   senão o conteúdo "persegue" o menu e a transição parece com defeito.
+   Recolhido, sobram só os ícones, e cada botão ganha o nome como dica do
+   sistema — sem isso o menu vira adivinhação. */
+.lateral, .quadro .corpo, .item-lat-txt {
+  transition: width .32s cubic-bezier(.4,0,.2,1), padding-left .32s cubic-bezier(.4,0,.2,1),
+              opacity .18s ease-out, max-width .32s cubic-bezier(.4,0,.2,1);
+}
+.recolher {
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  border: 0; background: transparent; border-radius: 12px;
+  padding: 9px 14px; margin-bottom: 6px;
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--tinta2); text-align: left;
+}
+.recolher:hover { color: var(--tinta); }
+.icone-chevron { width: 17px; height: 17px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.quadro-estreito .lateral { width: 60px; }
+.quadro-estreito .item-lat-txt { opacity: 0; max-width: 0; overflow: hidden; white-space: nowrap; }
+.quadro-estreito .item-lat, .quadro-estreito .recolher { justify-content: center; padding-left: 0; padding-right: 0; gap: 0; }
+.item-lat-txt { max-width: 200px; overflow: hidden; white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lateral, .quadro .corpo, .item-lat-txt, .icone-chevron path { transition: none; }
+}
 .icone-aba { width: 17px; height: 17px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
 /* No celular a lateral vira uma barra que rola de lado, com o texto abaixo do
    ícone — cabe o dobro de itens na mesma largura. */
+/* No celular o menu ja e uma barra horizontal: recolher nao faz sentido, e o
+   botao sairia de cena. */
 @media (max-width: 860px) {
+  .recolher { display: none; }
+  .quadro-estreito .lateral { width: 100%; }
+  .quadro-estreito .item-lat-txt { opacity: 1; max-width: 200px; }
+  .quadro-estreito .item-lat { padding: 9px 12px; gap: 5px; }
   .quadro { flex-direction: column; gap: 0; padding: 0 14px; }
   .lateral { flex-direction: row; width: 100%; position: static; overflow-x: auto; gap: 2px; padding-bottom: 6px; }
   .item-lat { flex-direction: column; gap: 5px; width: auto; padding: 9px 12px; font-size: 9.5px; text-align: center; letter-spacing: 0.04em; }
