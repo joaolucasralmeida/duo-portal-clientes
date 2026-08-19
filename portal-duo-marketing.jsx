@@ -341,6 +341,91 @@ function Chevron({ aberto }) {
   );
 }
 
+// Menu lateral. Vive num componente próprio por causa do efeito de aproximação:
+// ele acompanha o mouse, e sem isolar aqui o portal inteiro se redesenharia a
+// cada pixel percorrido.
+//
+// Recolhido, os ícones crescem conforme o cursor se aproxima — o mais próximo
+// cresce mais, os vizinhos acompanham em proporção menor. É o que faz um menu
+// de ícones sem texto continuar navegável: o alvo se oferece antes do clique.
+const ALCANCE = 96;   // até onde o cursor influencia, em pixels
+const CRESCER = 0.42; // quanto o item bem embaixo do cursor cresce
+
+function MenuLateral({ abas, tela, onTrocar, aberta, onAlternar }) {
+  const [cursorY, setCursorY] = useState(null);
+  const nav = React.useRef(null);
+  const [poupar, setPoupar] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const ler = () => setPoupar(mq.matches);
+    ler();
+    mq.addEventListener("change", ler);
+    return () => mq.removeEventListener("change", ler);
+  }, []);
+
+  // Só recolhido faz sentido: aberto, o item já tem o nome escrito e não
+  // precisa crescer para se anunciar.
+  const ativo = !aberta && !poupar && cursorY !== null;
+
+  const escalaDe = (el) => {
+    if (!ativo || !el) return 1;
+    const r = el.getBoundingClientRect();
+    const meio = r.top + r.height / 2;
+    const dist = Math.abs(cursorY - meio);
+    if (dist > ALCANCE) return 1;
+    // Curva suave: cresce rápido perto do cursor e desaparece na borda do alcance.
+    return 1 + CRESCER * Math.cos((dist / ALCANCE) * (Math.PI / 2)) ** 2;
+  };
+
+  return (
+    <nav
+      className="lateral"
+      ref={nav}
+      onMouseMove={(e) => { if (!aberta) setCursorY(e.clientY); }}
+      onMouseLeave={() => setCursorY(null)}
+    >
+      <button
+        className="recolher"
+        onClick={onAlternar}
+        aria-expanded={aberta}
+        title={aberta ? "Recolher o menu" : "Expandir o menu"}
+      >
+        <Chevron aberto={aberta} />
+      </button>
+      {abas.map(([k, r]) => (
+        <ItemLateral
+          key={k}
+          chave={k}
+          rotulo={r}
+          ativoNaTela={tela === k}
+          mostrarDica={!aberta}
+          escalaDe={escalaDe}
+          onClick={() => onTrocar(k)}
+        />
+      ))}
+    </nav>
+  );
+}
+
+function ItemLateral({ chave, rotulo, ativoNaTela, mostrarDica, escalaDe, onClick }) {
+  const ref = React.useRef(null);
+  const escala = escalaDe(ref.current);
+  return (
+    <button
+      ref={ref}
+      className={ativoNaTela ? "item-lat item-lat-on" : "item-lat"}
+      onClick={onClick}
+      title={mostrarDica ? rotulo : undefined}
+    >
+      <span className="item-lat-icone" style={{ transform: `scale(${escala.toFixed(3)})` }}>
+        <IconeAba nome={chave} />
+      </span>
+      <span className="item-lat-txt">{rotulo}</span>
+    </button>
+  );
+}
+
 function IconeAba({ nome }) {
   const d = DESENHOS_ABA[nome];
   if (!d) return null;
@@ -1233,23 +1318,13 @@ export default function PortalDuo() {
       {/* Menu lateral no computador, barra rolável no celular. Sete itens em
           abas horizontais já estavam apertados e não cabem em tela pequena. */}
       <div className={`quadro${lateralAberta ? "" : " quadro-estreito"}`}>
-        <nav className="lateral">
-          <button
-            className="recolher"
-            onClick={() => setLateralAberta((a) => !a)}
-            aria-expanded={lateralAberta}
-            title={lateralAberta ? "Recolher o menu" : "Expandir o menu"}
-          >
-            <Chevron aberto={lateralAberta} />
-          </button>
-          {abas.map(([k, r]) => (
-            <button key={k} className={tela === k ? "item-lat item-lat-on" : "item-lat"} onClick={() => setTela(k)}
-              title={lateralAberta ? undefined : r}>
-              <IconeAba nome={k} />
-              <span className="item-lat-txt">{r}</span>
-            </button>
-          ))}
-        </nav>
+        <MenuLateral
+          abas={abas}
+          tela={tela}
+          onTrocar={setTela}
+          aberta={lateralAberta}
+          onAlternar={() => setLateralAberta((a) => !a)}
+        />
 
       <main className="corpo">
         {(tela === "agenda" || tela === "entregas") && (
@@ -3117,6 +3192,10 @@ const CSS = `
   .lateral, .quadro .corpo, .item-lat-txt, .icone-chevron path { transition: none; }
 }
 .icone-aba { width: 17px; height: 17px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+/* O ícone cresce dentro de um invólucro de tamanho fixo: assim o botão não
+   muda de altura e os vizinhos não pulam de lugar enquanto o mouse passa.
+   Sem a transição curta, o crescimento fica travado entre um pixel e outro. */
+.item-lat-icone { display: flex; align-items: center; justify-content: center; width: 17px; height: 17px; flex-shrink: 0; transform-origin: center; transition: transform .12s ease-out; }
 
 /* No celular a lateral vira uma barra que rola de lado, com o texto abaixo do
    ícone — cabe o dobro de itens na mesma largura. */
