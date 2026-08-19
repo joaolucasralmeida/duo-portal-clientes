@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "./src/supabase.js";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Cell, Label, Line, LineChart, Pie, PieChart, ResponsiveContainer, Sector, Tooltip, XAxis, YAxis } from "recharts";
 
 /* ------------------------------------------------------------------ */
 /*  DUO MARKETING — Portal do Cliente                                  */
@@ -1950,6 +1950,9 @@ function FormPost({ dados, clientes, semanas, onSalvar, onExcluir, onFechar }) {
 /* ----------------------------- métricas ----------------------------- */
 
 const CORES = ["#7A4A22", "#4C5A66", "#55684F", "#8C6D2E", "#A4522F", "#706860"];
+// As mesmas cores da paleta, clareadas para o painel escuro. As originais têm
+// luminosidade parecida com o fundo e as fatias se misturavam entre si.
+const CORES_CLARAS = ["#C9976A", "#8CA3B3", "#93AC8B", "#D0AC63", "#DD8A63", "#A99E94"];
 const W = 620, H = 220;
 
 function Dica({ dica }) {
@@ -2034,40 +2037,65 @@ function GraficoBarras({ pontos, nome, aoPassar }) {
   );
 }
 
-function GraficoPizza({ pontos, nome, aoPassar }) {
-  const total = pontos.reduce((s, p) => s + p.valor, 0) || 1;
-  const cx = 110, cy = 110, r = 92;
-  let ang = -Math.PI / 2;
-  const fatias = pontos.map((p) => {
-    const passo = (p.valor / total) * Math.PI * 2;
-    const ini = ang; ang += passo;
-    const x1 = cx + r * Math.cos(ini), y1 = cy + r * Math.sin(ini);
-    const x2 = cx + r * Math.cos(ang), y2 = cy + r * Math.sin(ang);
-    const meio = ini + passo / 2;
-    return {
-      p, pct: (p.valor / total) * 100,
-      d: `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${passo > Math.PI ? 1 : 0} 1 ${x2},${y2} Z`,
-      mx: cx + (r * 0.6) * Math.cos(meio), my: cy + (r * 0.6) * Math.sin(meio),
-    };
-  });
+function DicaPizza({ active, payload, nome, total }) {
+  if (!active || !payload || !payload.length) return null;
+  const d = payload[0].payload;
+  const pct = total ? ((d.valor / total) * 100).toFixed(0) : "0";
+  return (
+    <div className="dica-recharts">
+      <span className="dica-rot">{nome} · {d.rotulo}</span>
+      <span className="dica-val">{num(d.valor)} · {pct}%</span>
+    </div>
+  );
+}
+
+// Rosquinha com a fatia sob o mouse crescendo, no modelo que ele mandou. O
+// miolo vazio ganha uso: mostra o total, que antes não aparecia em lugar nenhum.
+function GraficoPizza({ pontos, nome }) {
+  const [ativa, setAtiva] = useState(-1);
+  const total = pontos.reduce((s, p) => s + p.valor, 0);
+  const dados = pontos.map((p) => ({ rotulo: p.rotulo, valor: p.valor }));
   return (
     <div className="pizza-linha">
-      <svg viewBox="0 0 220 220" className="grafico pizza" onMouseLeave={() => aoPassar(null)}>
-        {fatias.map((f, i) => (
-          <path key={i} d={f.d} fill={CORES[i % CORES.length]} className="g-fatia"
-            onMouseEnter={() => aoPassar({
-              rotulo: `${nome} · ${f.p.rotulo}`, valor: `${num(f.p.valor)} · ${f.pct.toFixed(0)}%`,
-              x: (f.mx / 220) * 100, y: (f.my / 220) * 100,
-            })} />
-        ))}
-        <circle cx={cx} cy={cy} r="42" className="pizza-miolo" />
-      </svg>
+      <ResponsiveContainer width={240} height={240}>
+        <PieChart>
+          <Tooltip cursor={false} content={<DicaPizza nome={nome} total={total} />} />
+          <Pie
+            data={dados}
+            dataKey="valor"
+            nameKey="rotulo"
+            innerRadius={62}
+            outerRadius={96}
+            paddingAngle={2}
+            stroke="var(--noite)"
+            strokeWidth={3}
+            onMouseEnter={(_, i) => setAtiva(i)}
+            onMouseLeave={() => setAtiva(-1)}
+            shape={({ outerRadius = 0, index, ...resto }) => (
+              <Sector {...resto} outerRadius={index === ativa ? outerRadius + 8 : outerRadius} />
+            )}
+          >
+            {dados.map((_, i) => (
+              <Cell key={i} fill={CORES_CLARAS[i % CORES_CLARAS.length]} />
+            ))}
+            <Label
+              position="center"
+              content={({ viewBox }) => (
+                <>
+                  <text x={viewBox.cx} y={viewBox.cy - 6} textAnchor="middle" className="pizza-total">{num(total)}</text>
+                  <text x={viewBox.cx} y={viewBox.cy + 14} textAnchor="middle" className="pizza-total-rot">total</text>
+                </>
+              )}
+            />
+          </Pie>
+        </PieChart>
+      </ResponsiveContainer>
       <div className="pizza-legenda">
-        {fatias.map((f, i) => (
+        {pontos.map((p, i) => (
           <div className="pl-item" key={i}>
-            <span className="pl-cor" style={{ background: CORES[i % CORES.length] }} />
-            <span className="pl-nome">{f.p.rotulo}</span>
-            <span className="pl-valor">{num(f.p.valor)}</span>
+            <span className="pl-cor" style={{ background: CORES_CLARAS[i % CORES_CLARAS.length] }} />
+            <span className="pl-nome">{p.rotulo}</span>
+            <span className="pl-valor">{num(p.valor)}</span>
           </div>
         ))}
       </div>
@@ -2129,7 +2157,7 @@ function Metricas({ adm, cliente, metricas, registros, onNovoPeriodo, onEditarPe
                 <div className="g-area-hover">
                   {vis === "linha" && <GraficoLinha pontos={pontos} nome={metrica.nome} />}
                   {vis === "barras" && <GraficoBarras pontos={pontos} nome={metrica.nome} aoPassar={setDica} />}
-                  {vis === "pizza" && <GraficoPizza pontos={pontos} nome={metrica.nome} aoPassar={setDica} />}
+                  {vis === "pizza" && <GraficoPizza pontos={pontos} nome={metrica.nome} />}
                   <Dica dica={dica} />
                 </div>
                 <p className="meta centro">Passe o mouse sobre o gráfico para ver os números.</p>
@@ -3061,6 +3089,9 @@ button.card:hover { transform: translateY(-2px); }
 .dica-recharts { background: var(--noite-alto); color: var(--noite-tinta); padding: 9px 13px; border-radius: 10px; box-shadow: 0 8px 20px rgba(0,0,0,0.45); font-variant-numeric: tabular-nums; }
 .dica-recharts .dica-rot { display: block; font-size: 10px; color: var(--noite-tinta2); margin-bottom: 2px; }
 .dica-recharts .dica-val { display: block; font-size: 16px; font-weight: 500; }
+/* Miolo da rosquinha: o total, que antes não aparecia em lugar nenhum. */
+.pizza-total { fill: var(--noite-tinta); font-size: 24px; font-weight: 300; font-family: 'Poppins', sans-serif; font-variant-numeric: tabular-nums; }
+.pizza-total-rot { fill: var(--noite-tinta2); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; font-family: 'Poppins', sans-serif; }
 .resumo-metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 16px; }
 .resumo { border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; }
 .resumo-num { font-size: 26px; font-weight: 200; line-height: 1.2; }
