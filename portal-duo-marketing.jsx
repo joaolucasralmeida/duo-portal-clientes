@@ -1386,6 +1386,7 @@ function Login({ onEntrar }) {
   const [ver, setVer] = useState(false); const [erro, setErro] = useState("");
   const [tentativas, setTentativas] = useState(0); const [bloqueio, setBloqueio] = useState(0);
   const [enviando, setEnviando] = useState(false);
+  const [recado, setRecado] = useState("");
 
   useEffect(() => { if (bloqueio <= 0) return; const t = setTimeout(() => setBloqueio((b) => b - 1), 1000); return () => clearTimeout(t); }, [bloqueio]);
 
@@ -1403,24 +1404,67 @@ function Login({ onEntrar }) {
     else setErro(`${falha.texto} Restam ${MAX_TENTATIVAS - t} tentativas.`);
   };
 
+  // Faltava um caminho de volta para quem esquece a senha: hoje o cliente teria
+  // de pedir à Duo. O Supabase manda o link e ele mesmo cria a nova.
+  const esqueci = async () => {
+    if (!u.trim()) { setErro("Escreva seu e-mail acima primeiro."); return; }
+    setEnviando(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(u.trim().toLowerCase(), {
+      redirectTo: window.location.origin,
+    });
+    setEnviando(false);
+    setErro("");
+    // Não dizemos se o e-mail existe ou não: revelar isso entregaria a quem
+    // tenta invadir quais endereços têm conta no portal.
+    setRecado(error
+      ? "Não consegui enviar agora. Confira a internet e tente de novo."
+      : "Se este e-mail tiver acesso ao portal, o link para criar uma senha nova chega em instantes.");
+  };
+
   return (
     <div className="entrada">
-      <div className="entrada-caixa rel">
-        <div className="entrada-marca"><Marca tamanho="g" /></div>
+      <div className="entrada-topo">
+        <Marca tamanho="g" />
         <p className="entrada-sub">Portal do cliente</p>
+      </div>
+
+      <div className="entrada-caixa rel">
+        <h1 className="entrada-titulo">Entrar</h1>
+        <p className="entrada-apoio">Acesse com o e-mail que a Duo cadastrou para você.</p>
+
         <label className="rotulo-2" htmlFor="lg-u">E-mail</label>
-        <input id="lg-u" className="campo baixo" type="email" value={u} autoComplete="username" onChange={(e) => setU(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()} />
-        <label className="rotulo-2" htmlFor="lg-s">Senha</label>
+        <input id="lg-u" className="campo baixo" type="email" value={u} autoComplete="username"
+          placeholder="voce@empresa.com.br"
+          onChange={(e) => { setU(e.target.value); setRecado(""); }}
+          onKeyDown={(e) => e.key === "Enter" && enviar()} />
+
+        <div className="rotulo-linha">
+          <label className="rotulo-2" htmlFor="lg-s">Senha</label>
+          <button type="button" className="link-discreto" onClick={esqueci} disabled={enviando}>
+            Esqueci minha senha
+          </button>
+        </div>
         <div className="campo-linha">
-          <input id="lg-s" className="campo baixo" type={ver ? "text" : "password"} value={s} onChange={(e) => setS(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()} />
+          <input id="lg-s" className="campo baixo" type={ver ? "text" : "password"} value={s}
+            autoComplete="current-password"
+            onChange={(e) => setS(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()} />
           <button className="olho" onClick={() => setVer(!ver)} aria-label={ver ? "Ocultar senha" : "Ver senha"} title={ver ? "Ocultar" : "Ver"}>
             <Olho cortado={!ver} />
           </button>
         </div>
+
         {erro && <p className="erro">{erro}</p>}
         {bloqueio > 0 && <p className="erro">Tente de novo em {bloqueio}s.</p>}
-        <button className="btn btn-forte largo" onClick={enviar} disabled={bloqueio > 0 || enviando || !u || !s}>{enviando ? "Entrando…" : "Entrar"}</button>
+        {recado && <p className="recado">{recado}</p>}
+
+        <button className="btn btn-primario largo" onClick={enviar} disabled={bloqueio > 0 || enviando || !u || !s}>
+          {enviando ? "Entrando…" : "Entrar"}
+        </button>
       </div>
+
+      <p className="entrada-rodape">
+        O acesso ao portal é criado pela Duo. Não tem conta? Fale com a gente.
+      </p>
     </div>
   );
 }
@@ -3233,7 +3277,28 @@ select.campo { appearance: none; }
 
 /* login */
 .entrada { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 30px 20px; }
-.entrada-caixa { width: 100%; max-width: 380px; border-radius: 22px; padding: 34px 30px 30px; }
+/* ---------------- tela de entrada ----------------
+   Duas cores, como ele pediu: o bege da paleta no fundo e a tinta escura no
+   botão principal. A marca sai de dentro da caixa e vira o topo da página,
+   que é o que dá ao conjunto a leitura de "entrada" e não de "formulário". */
+.entrada { flex-direction: column; gap: 22px; }
+.entrada-topo { text-align: center; }
+.entrada-topo .entrada-sub { margin: 10px 0 0; }
+.entrada-titulo { margin: 0 0 4px; font-size: 21px; font-weight: 400; color: var(--tinta); }
+.entrada-apoio { margin: 0 0 22px; font-size: 13px; color: var(--tinta2); line-height: 1.5; }
+.rotulo-linha { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.link-discreto { border: 0; background: transparent; padding: 0; font-size: 11px; color: var(--tinta2); text-decoration: underline; text-underline-offset: 3px; }
+.link-discreto:hover { color: var(--tinta); }
+.link-discreto:disabled { opacity: 0.5; }
+/* Botão sólido em vez do relevo: numa tela com um caminho só, o contraste diz
+   onde clicar sem precisar de instrução. */
+.btn-primario { background: var(--tinta); color: var(--base); box-shadow: 3px 3px 10px var(--sombra); }
+.btn-primario:hover { background: var(--tinta2); box-shadow: 2px 2px 7px var(--sombra); }
+.btn-primario:active { background: var(--tinta); box-shadow: inset 2px 2px 6px rgba(0,0,0,0.35); }
+.btn-primario:disabled { background: var(--tinta2); opacity: 0.45; box-shadow: none; }
+.recado { margin: 14px 0 0; font-size: 12px; color: var(--sage); line-height: 1.5; }
+.entrada-rodape { max-width: 380px; margin: 0; text-align: center; font-size: 11px; color: var(--tinta2); line-height: 1.6; }
+.entrada-caixa { width: 100%; max-width: 380px; border-radius: 22px; padding: 30px 28px 28px; }
 /* A caixa de entrada é grande, e o brilho branco do relevo virava um halo
    aceso em volta dela. Aqui a luz entra bem mais fraca que no resto. */
 .entrada-caixa.rel { box-shadow: -2px -2px 8px rgba(255,255,255,0.45), 5px 5px 14px var(--sombra); }
