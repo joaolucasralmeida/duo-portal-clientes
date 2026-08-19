@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "./src/supabase.js";
-import { CartesianGrid, Cell, Label, Line, LineChart, Pie, PieChart, ResponsiveContainer, Sector, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Label, Line, LineChart, Pie, PieChart, ResponsiveContainer, Sector, Tooltip, XAxis, YAxis } from "recharts";
 
 /* ------------------------------------------------------------------ */
 /*  DUO MARKETING — Portal do Cliente                                  */
@@ -1955,15 +1955,6 @@ const CORES = ["#7A4A22", "#4C5A66", "#55684F", "#8C6D2E", "#A4522F", "#706860"]
 const CORES_CLARAS = ["#C9976A", "#8CA3B3", "#93AC8B", "#D0AC63", "#DD8A63", "#A99E94"];
 const W = 620, H = 220;
 
-function Dica({ dica }) {
-  if (!dica) return null;
-  return (
-    <div className="dica" style={{ left: `${dica.x}%`, top: `${dica.y}%` }}>
-      <span className="dica-rot">{dica.rotulo}</span>
-      <span className="dica-val">{dica.valor}</span>
-    </div>
-  );
-}
 
 // Balão que a recharts mostra ao passar o mouse. Feito à mão para seguir a
 // paleta: o padrão da biblioteca é branco com borda cinza e destoaria do escuro.
@@ -2014,26 +2005,42 @@ function GraficoLinha({ pontos, nome }) {
   );
 }
 
-function GraficoBarras({ pontos, nome, aoPassar }) {
-  const pl = 24, pr = 24, pt = 26, pb = 36;
-  const max = Math.max(...pontos.map((p) => p.valor), 1);
-  const larg = (W - pl - pr) / pontos.length;
-  const bw = Math.min(76, larg * 0.56);
+// Mesma base da linha e da rosquinha: grade horizontal, eixo sem linha dura e
+// balão da própria biblioteca. A barra sob o mouse acende, que é o equivalente
+// honesto do "interativo" do exemplo — os botões de trocar série ele já tem nas
+// pastilhas acima, e repeti-los aqui criaria dois seletores para a mesma coisa.
+function GraficoBarras({ pontos, nome }) {
+  const [ativa, setAtiva] = useState(-1);
+  const dados = pontos.map((p) => ({ rotulo: p.rotulo, valor: p.valor }));
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="grafico" onMouseLeave={() => aoPassar(null)}>
-      {pontos.map((p, i) => {
-        const alt = (p.valor / max) * (H - pt - pb);
-        const bx = pl + i * larg + larg / 2 - bw / 2;
-        const by = H - pb - alt;
-        return (
-          <g key={i}>
-            <rect x={bx} y={by} width={bw} height={alt} rx="6" className="g-barra"
-              onMouseEnter={() => aoPassar({ rotulo: `${nome} · ${p.rotulo}`, valor: num(p.valor), x: ((bx + bw / 2) / W) * 100, y: (by / H) * 100 })} />
-            <text x={bx + bw / 2} y={H - 12} className="g-rotulo" textAnchor="middle">{p.rotulo}</text>
-          </g>
-        );
-      })}
-    </svg>
+    <ResponsiveContainer width="100%" height={H}>
+      <BarChart data={dados} margin={{ top: 18, right: 20, bottom: 6, left: 12 }}
+        onMouseLeave={() => setAtiva(-1)}>
+        <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.09)" />
+        <XAxis
+          dataKey="rotulo"
+          tickLine={false}
+          axisLine={false}
+          tickMargin={10}
+          minTickGap={24}
+          tick={{ fill: "var(--noite-tinta2)", fontSize: 11, fontFamily: "Poppins, sans-serif" }}
+        />
+        <YAxis
+          width={44}
+          tickLine={false}
+          axisLine={false}
+          tick={{ fill: "var(--noite-tinta2)", fontSize: 11, fontFamily: "Poppins, sans-serif" }}
+          tickFormatter={(v) => num(v)}
+        />
+        <Tooltip cursor={{ fill: "rgba(255,255,255,0.05)" }} content={<DicaLinha nome={nome} />} />
+        <Bar dataKey="valor" radius={[6, 6, 0, 0]} maxBarSize={76}
+          onMouseEnter={(_, i) => setAtiva(i)}>
+          {dados.map((_, i) => (
+            <Cell key={i} fill="var(--cacau-claro)" fillOpacity={ativa === -1 || ativa === i ? 1 : 0.45} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
   );
 }
 
@@ -2107,7 +2114,6 @@ function Metricas({ adm, cliente, metricas, registros, onNovoPeriodo, onEditarPe
   const [sel, setSel] = useState(metricas[0] ? metricas[0].id : null);
   const [nova, setNova] = useState(null);
   const [vis, setVis] = useState("linha");
-  const [dica, setDica] = useState(null);
   const metrica = metricas.find((m) => m.id === sel) || metricas[0];
 
   const pontos = registros
@@ -2143,7 +2149,7 @@ function Metricas({ adm, cliente, metricas, registros, onNovoPeriodo, onEditarPe
             </div>
             <div className="chips-metrica">
               {[["linha", "Linha"], ["barras", "Barras"], ["pizza", "Pizza"], ["tabela", "Tabela"]].map(([k, r]) => (
-                <button key={k} className={vis === k ? "atalho baixo" : "atalho rel"} onClick={() => { setVis(k); setDica(null); }}>{r}</button>
+                <button key={k} className={vis === k ? "atalho baixo" : "atalho rel"} onClick={() => setVis(k)}>{r}</button>
               ))}
             </div>
           </div>
@@ -2156,9 +2162,8 @@ function Metricas({ adm, cliente, metricas, registros, onNovoPeriodo, onEditarPe
                 <p className="g-titulo">{metrica.nome}</p>
                 <div className="g-area-hover">
                   {vis === "linha" && <GraficoLinha pontos={pontos} nome={metrica.nome} />}
-                  {vis === "barras" && <GraficoBarras pontos={pontos} nome={metrica.nome} aoPassar={setDica} />}
+                  {vis === "barras" && <GraficoBarras pontos={pontos} nome={metrica.nome} />}
                   {vis === "pizza" && <GraficoPizza pontos={pontos} nome={metrica.nome} />}
-                  <Dica dica={dica} />
                 </div>
                 <p className="meta centro">Passe o mouse sobre o gráfico para ver os números.</p>
               </div>
