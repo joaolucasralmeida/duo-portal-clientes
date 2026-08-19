@@ -1241,7 +1241,6 @@ export default function PortalDuo() {
             title={lateralAberta ? "Recolher o menu" : "Expandir o menu"}
           >
             <Chevron aberto={lateralAberta} />
-            <span className="item-lat-txt">Recolher</span>
           </button>
           {abas.map(([k, r]) => (
             <button key={k} className={tela === k ? "item-lat item-lat-on" : "item-lat"} onClick={() => setTela(k)}
@@ -3094,14 +3093,15 @@ const CSS = `
   transition: width .32s cubic-bezier(.4,0,.2,1), padding-left .32s cubic-bezier(.4,0,.2,1),
               opacity .18s ease-out, max-width .32s cubic-bezier(.4,0,.2,1);
 }
+/* Só a seta. Aberta, ela fica encostada na direita do menu: dali, apontando
+   para a esquerda, ela diz "empurre isto para lá" sem precisar da palavra. */
 .recolher {
-  display: flex; align-items: center; gap: 11px; width: 100%;
-  border: 0; background: transparent; border-radius: 12px;
-  padding: 9px 14px; margin-bottom: 6px;
-  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--tinta2); text-align: left;
+  display: flex; align-items: center; justify-content: flex-end;
+  width: 100%; border: 0; background: transparent; border-radius: 10px;
+  padding: 6px 14px; margin-bottom: 4px; color: var(--tinta2);
 }
 .recolher:hover { color: var(--tinta); }
+.quadro-estreito .recolher { justify-content: center; padding-left: 0; padding-right: 0; }
 .icone-chevron { width: 17px; height: 17px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .quadro-estreito .lateral { width: 60px; }
 .quadro-estreito .item-lat-txt { opacity: 0; max-width: 0; overflow: hidden; white-space: nowrap; }
