@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "./src/supabase.js";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 /* ------------------------------------------------------------------ */
 /*  DUO MARKETING — Portal do Cliente                                  */
@@ -1961,31 +1962,52 @@ function Dica({ dica }) {
   );
 }
 
-function GraficoLinha({ pontos, nome, aoPassar }) {
-  const pl = 24, pr = 24, pt = 26, pb = 36;
-  const vals = pontos.map((p) => p.valor);
-  const max = Math.max(...vals), min = Math.min(...vals, 0);
-  const x = (i) => pl + (i * (W - pl - pr)) / (pontos.length - 1 || 1);
-  const y = (v) => H - pb - ((v - min) / (max - min || 1)) * (H - pt - pb);
-  const linha = pontos.map((p, i) => `${i ? "L" : "M"}${x(i)},${y(p.valor)}`).join(" ");
-  const area = `${linha} L${x(pontos.length - 1)},${H - pb} L${x(0)},${H - pb} Z`;
+// Balão que a recharts mostra ao passar o mouse. Feito à mão para seguir a
+// paleta: o padrão da biblioteca é branco com borda cinza e destoaria do escuro.
+function DicaLinha({ active, payload, label, nome }) {
+  if (!active || !payload || !payload.length) return null;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="grafico" onMouseLeave={() => aoPassar(null)}>
-      <path d={area} className="g-area" />
-      <path d={linha} className="g-linha" />
-      {pontos.map((p, i) => (
-        <g key={i}>
-          <circle cx={x(i)} cy={y(p.valor)} r="14" className="g-alvo"
-            onMouseEnter={() => aoPassar({ rotulo: `${nome} · ${p.rotulo}`, valor: num(p.valor), x: (x(i) / W) * 100, y: (y(p.valor) / H) * 100 })} />
-          <circle cx={x(i)} cy={y(p.valor)} r="4.5" className="g-ponto" />
-          {/* O primeiro rótulo é ancorado pela esquerda e o último pela direita.
-              Centralizar todos jogava metade do primeiro para fora do desenho —
-              era isso que cortava o "Começo Cont..." na borda. */}
-          <text x={x(i)} y={H - 12} className="g-rotulo"
-            textAnchor={i === 0 ? "start" : i === pontos.length - 1 ? "end" : "middle"}>{p.rotulo}</text>
-        </g>
-      ))}
-    </svg>
+    <div className="dica-recharts">
+      <span className="dica-rot">{nome} · {label}</span>
+      <span className="dica-val">{num(payload[0].value)}</span>
+    </div>
+  );
+}
+
+// Curva "natural" no lugar dos segmentos retos, grade horizontal de apoio e
+// eixo sem linha — o desenho que ele pediu, feito com recharts em vez do SVG
+// escrito na mão. As cores continuam sendo as da marca.
+function GraficoLinha({ pontos, nome }) {
+  const dados = pontos.map((p) => ({ rotulo: p.rotulo, valor: p.valor }));
+  return (
+    <ResponsiveContainer width="100%" height={H}>
+      <LineChart data={dados} margin={{ top: 18, right: 20, bottom: 6, left: 12 }}>
+        <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.09)" />
+        <XAxis
+          dataKey="rotulo"
+          tickLine={false}
+          axisLine={false}
+          tickMargin={10}
+          tick={{ fill: "var(--noite-tinta2)", fontSize: 11, fontFamily: "Poppins, sans-serif" }}
+        />
+        <YAxis
+          width={44}
+          tickLine={false}
+          axisLine={false}
+          tick={{ fill: "var(--noite-tinta2)", fontSize: 11, fontFamily: "Poppins, sans-serif" }}
+          tickFormatter={(v) => num(v)}
+        />
+        <Tooltip cursor={{ stroke: "rgba(255,255,255,0.18)" }} content={<DicaLinha nome={nome} />} />
+        <Line
+          dataKey="valor"
+          type="natural"
+          stroke="var(--cacau-claro)"
+          strokeWidth={2}
+          dot={{ r: 4, fill: "var(--cacau-claro)", strokeWidth: 0 }}
+          activeDot={{ r: 6 }}
+        />
+      </LineChart>
+    </ResponsiveContainer>
   );
 }
 
@@ -2105,7 +2127,7 @@ function Metricas({ adm, cliente, metricas, registros, onNovoPeriodo, onEditarPe
               <div className="gcaixa baixo">
                 <p className="g-titulo">{metrica.nome}</p>
                 <div className="g-area-hover">
-                  {vis === "linha" && <GraficoLinha pontos={pontos} nome={metrica.nome} aoPassar={setDica} />}
+                  {vis === "linha" && <GraficoLinha pontos={pontos} nome={metrica.nome} />}
                   {vis === "barras" && <GraficoBarras pontos={pontos} nome={metrica.nome} aoPassar={setDica} />}
                   {vis === "pizza" && <GraficoPizza pontos={pontos} nome={metrica.nome} aoPassar={setDica} />}
                   <Dica dica={dica} />
@@ -3034,6 +3056,11 @@ button.card:hover { transform: translateY(-2px); }
 .dica { position: absolute; transform: translate(-50%, -125%); background: var(--tinta); color: var(--base); padding: 8px 12px; border-radius: 10px; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 16px rgba(53,48,43,0.3); z-index: 5; }
 .dica-rot { display: block; font-size: 10px; opacity: 0.75; }
 .dica-val { display: block; font-size: 15px; font-weight: 500; }
+/* Balão do gráfico de linha. A recharts posiciona sozinha; aqui só a aparência,
+   que precisa seguir a paleta em vez do branco padrão da biblioteca. */
+.dica-recharts { background: var(--noite-alto); color: var(--noite-tinta); padding: 9px 13px; border-radius: 10px; box-shadow: 0 8px 20px rgba(0,0,0,0.45); font-variant-numeric: tabular-nums; }
+.dica-recharts .dica-rot { display: block; font-size: 10px; color: var(--noite-tinta2); margin-bottom: 2px; }
+.dica-recharts .dica-val { display: block; font-size: 16px; font-weight: 500; }
 .resumo-metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 16px; }
 .resumo { border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; }
 .resumo-num { font-size: 26px; font-weight: 200; line-height: 1.2; }
