@@ -8,15 +8,31 @@
     ],
     "created_at": "2026-08-19"
   },
-
   "design_system": {
     "color": {
       "palette_type": "analogous",
-      "primary": { "hex": "#35302B", "role": "tinta — texto principal, botão primário sólido, fundo de avisos" },
-      "secondary": { "hex": "#706860", "role": "tinta2 — texto de apoio, rótulos, ícones inativos" },
-      "accent": { "hex": "#7A4A22", "role": "cacau — ação forte, foco de teclado, tipo de post Carrossel" },
+      "primary": {
+        "hex": "#35302B",
+        "role": "tinta — texto principal, botão primário sólido, fundo de avisos"
+      },
+      "secondary": {
+        "hex": "#706860",
+        "role": "tinta2 — texto de apoio, rótulos, ícones inativos"
+      },
+      "accent": {
+        "hex": "#7A4A22",
+        "role": "cacau — ação forte, foco de teclado, tipo de post Carrossel"
+      },
       "neutral": {
-        "scale": ["#DBD4CE", "#EDE7E1", "#A99E94", "#706860", "#35302B", "#332E29", "#2A2622"],
+        "scale": [
+          "#DBD4CE",
+          "#EDE7E1",
+          "#A99E94",
+          "#706860",
+          "#35302B",
+          "#332E29",
+          "#2A2622"
+        ],
         "usage": "O #DBD4CE é o chão de tudo — não é fundo, é o material de onde as peças são esculpidas. A escala escura (#332E29, #2A2622) é reservada e derivada da tinta, não de cinza neutro."
       },
       "semantic": {
@@ -30,19 +46,58 @@
         "card": "#DBD4CE (mesma cor do fundo — a separação é feita por sombra, nunca por cor)",
         "elevated": "#2A2622 (painel de métricas e caixa de login)"
       },
-      "contrast_strategy": "Contraste por profundidade, não por cor: quase tudo é o mesmo bege, e o que separa as camadas é a direção da luz. O escuro entra só onde a informação é o produto entregue — resultados e a porta de entrada. Cada cor de acento tem uma variante clareada obrigatória para uso sobre o escuro, porque as originais têm luminosidade próxima do fundo escuro."
+      "contrast_strategy": "Contraste por profundidade, não por cor: quase tudo é o mesmo bege, e o que separa as camadas é a direção da luz. O escuro entra só onde a informação é o produto entregue — resultados e a porta de entrada. Cada cor de acento tem uma variante clareada obrigatória para uso sobre o escuro, porque as originais têm luminosidade próxima do fundo escuro. O anel de foco do teclado tambem obedece a essa regra: cacau no claro, cacau-claro nas superficies escuras."
     },
-
     "typography": {
       "type_scale": {
-        "display": { "size": "54px", "weight": "300", "line_height": "1", "tracking": "0.16em" },
-        "heading_1": { "size": "clamp(21px, 3.4vw, 30px)", "weight": "300", "line_height": "1.2", "tracking": "-0.01em" },
-        "heading_2": { "size": "21px", "weight": "300", "line_height": "1.3", "tracking": "0" },
-        "heading_3": { "size": "12px", "weight": "400", "line_height": "1.4", "tracking": "0.18em" },
-        "body": { "size": "14px", "weight": "400", "line_height": "1.55", "tracking": "0" },
-        "body_small": { "size": "13px", "weight": "400", "line_height": "1.5", "tracking": "0" },
-        "caption": { "size": "11px", "weight": "400", "line_height": "1.55", "tracking": "0" },
-        "overline": { "size": "10px", "weight": "400", "line_height": "1.4", "tracking": "0.16em" }
+        "display": {
+          "size": "54px",
+          "weight": "300",
+          "line_height": "1",
+          "tracking": "0.16em"
+        },
+        "heading_1": {
+          "size": "clamp(21px, 3.4vw, 30px)",
+          "weight": "300",
+          "line_height": "1.2",
+          "tracking": "-0.01em"
+        },
+        "heading_2": {
+          "size": "21px",
+          "weight": "300",
+          "line_height": "1.3",
+          "tracking": "0"
+        },
+        "heading_3": {
+          "size": "12px",
+          "weight": "400",
+          "line_height": "1.4",
+          "tracking": "0.18em"
+        },
+        "body": {
+          "size": "14px",
+          "weight": "400",
+          "line_height": "1.55",
+          "tracking": "0"
+        },
+        "body_small": {
+          "size": "13px",
+          "weight": "400",
+          "line_height": "1.5",
+          "tracking": "0"
+        },
+        "caption": {
+          "size": "11px",
+          "weight": "400",
+          "line_height": "1.55",
+          "tracking": "0"
+        },
+        "overline": {
+          "size": "10px",
+          "weight": "400",
+          "line_height": "1.4",
+          "tracking": "0.16em"
+        }
       },
       "font_families": {
         "heading": "Poppins",
@@ -51,29 +106,51 @@
       },
       "font_style_notes": "Poppins geométrica em todo o sistema, com uma única exceção deliberada: a marca DUO e o campo de assinatura usam Jost 300. Pesos leves dominam os títulos (300), invertendo a convenção de título pesado — o tamanho e o espaçamento fazem a hierarquia, não a espessura. Versalete generoso (0.14–0.18em) nos rótulos, apertado (-0.01em) nos títulos grandes. Nenhuma fonte monoespaçada: alinhamento de números resolvido por tabular-nums."
     },
-
     "spacing": {
       "base_unit": "4px",
-      "scale": ["4px", "6px", "8px", "11px", "14px", "18px", "22px", "26px", "36px"],
+      "scale": [
+        "4px",
+        "6px",
+        "8px",
+        "11px",
+        "14px",
+        "18px",
+        "22px",
+        "26px",
+        "36px"
+      ],
       "content_density": "comfortable",
       "section_rhythm": "Cabeçalho de seção com 36px acima e 14px abaixo — o respiro fica antes do título, agrupando-o com o conteúdo que ele nomeia, não com o que veio antes."
     },
-
     "layout": {
       "grid_system": "flexbox com menu lateral fixo de 190px (60px recolhido) e conteúdo fluido; grade automática de cartões",
       "max_content_width": "1160px",
       "columns": "auto-fill, minmax(310px, 1fr) nos cartões; 7 colunas fixas no calendário semanal",
       "gutter": "18px",
-      "breakpoints": ["860px (menu lateral vira barra rolável)", "660px", "560px"],
+      "breakpoints": [
+        "860px (menu lateral vira barra rolável)",
+        "660px",
+        "560px"
+      ],
       "alignment_tendency": "strict grid com cabeçalhos centralizados no calendário"
     },
-
     "shape": {
-      "border_radius": { "small": "10px", "medium": "14px", "large": "22px", "pill": "999px" },
+      "border_radius": {
+        "small": "4px",
+        "medium": "10px",
+        "large": "14px",
+        "pill": "999px"
+      },
       "border_usage": "quase none — a única borda estrutural é o fio de 1px em rgba(150,136,124,0.20) separando as colunas de dias, e a barra colorida de 3px que identifica o tipo de post",
-      "divider_style": "fio de baixíssimo contraste, cerca de metade da intensidade da sombra da paleta, para organizar sem competir com o relevo"
+      "divider_style": "fio de baixíssimo contraste, cerca de metade da intensidade da sombra da paleta, para organizar sem competir com o relevo",
+      "escala_completa": [
+        "4px (barra de tipo, detalhe)",
+        "10px (campo, item de menu)",
+        "14px (cartao, painel, grafico)",
+        "22px (modal, caixa de entrada)",
+        "999px (botao, pastilha)"
+      ]
     },
-
     "elevation": {
       "shadow_style": "soft diffused, dupla e direcional",
       "levels": {
@@ -83,22 +160,27 @@
       },
       "depth_cues": "Duas sombras opostas em cada peça: luz branca no canto superior esquerdo, sombra bege no inferior direito. A profundidade nunca vem de cor ou de borda. No escuro a lógica inverte: luz fraca de cima, sombra fechando embaixo."
     },
-
     "iconography": {
       "style": "linear, geométrico, desenhado à mão em vetor no próprio código",
       "stroke_weight": "1.5px no menu, 1.6px no olho, 1.7px na seta de tendência",
-      "size_scale": ["10px (seta de tendência)", "17px (menu e chevron)", "20px (olho)"],
+      "size_scale": [
+        "10px (seta de tendência)",
+        "17px (menu e chevron)",
+        "20px (olho)"
+      ],
       "preferred_set": "nenhum — não usa biblioteca de ícones. Cada símbolo é um path escrito no arquivo, para não depender de fonte instalada nem de pacote externo"
     },
-
     "motion": {
       "easing": "ease-in na ida, ease-out na volta; cubic-bezier(.4,0,.2,1) no recolher do menu",
-      "duration_scale": { "micro": "0.07s", "normal": "0.24s", "macro": "0.32s" },
+      "duration_scale": {
+        "micro": "0.07s",
+        "normal": "0.24s",
+        "macro": "0.32s"
+      },
       "entrance_pattern": "afundar rápido — o toque é seco",
       "exit_pattern": "voltar devagar — material com corpo não salta de volta",
       "philosophy": "A assimetria entre ida e volta é a regra central: 0,07s para afundar e 0,26s para soltar. Simétrico pareceria elástico, não sólido. Toda transição respeita prefers-reduced-motion."
     },
-
     "components": {
       "button_style": "pílula em relevo que afunda ao toque; variante primária sólida em tinta escura reservada à tela de entrada, onde há um caminho só",
       "input_style": "campo afundado sem borda, raio 10px, com foco em contorno cacau de 2px",
@@ -109,15 +191,31 @@
       "component_notes": "Nenhuma biblioteca de componentes. O relevo é o sistema: .rel para saliente e .baixo para afundado, e quase todo componente é a combinação dessas duas classes com raio e espaçamento."
     }
   },
-
   "design_style": {
     "aesthetic": {
-      "mood": ["calmo", "artesanal", "acolhedor", "confiável", "silencioso"],
+      "mood": [
+        "calmo",
+        "artesanal",
+        "acolhedor",
+        "confiável",
+        "silencioso"
+      ],
       "visual_metaphor": "argila ou papel prensado — peças esculpidas na mesma superfície, não empilhadas sobre ela",
       "era_influence": "neumorfismo de 2020 com disciplina de 2026: o relevo sobrevive, o excesso decorativo não",
       "genre": "SaaS de agência boutique, com temperatura de identidade visual de confeitaria",
-      "personality_traits": ["discreto", "meticuloso", "hospitaleiro", "sem pressa"],
-      "adjectives": ["tátil", "monocromático", "quente", "sereno", "coeso"]
+      "personality_traits": [
+        "discreto",
+        "meticuloso",
+        "hospitaleiro",
+        "sem pressa"
+      ],
+      "adjectives": [
+        "tátil",
+        "monocromático",
+        "quente",
+        "sereno",
+        "coeso"
+      ]
     },
     "visual_language": {
       "complexity": "minimal",
@@ -157,7 +255,6 @@
       "error_tone": "nomeia o que houve e o que fazer, sem pedir desculpas nem culpar o usuário. Falha de rede nunca é tratada como erro de digitação"
     }
   },
-
   "visual_effects": {
     "overview": {
       "effect_intensity": "subtle-accent",
@@ -169,27 +266,76 @@
       "type": "none",
       "description": "Fundo sólido #DBD4CE. A ausência é deliberada: qualquer gradiente ou ruído destruiria a leitura do relevo, que depende de uma superfície uniforme para a sombra fazer sentido.",
       "technology": "none",
-      "params": { "color_palette": ["#DBD4CE"], "speed": "n/a", "density": "n/a", "opacity": "1", "blend_mode": "normal" }
+      "params": {
+        "color_palette": [
+          "#DBD4CE"
+        ],
+        "speed": "n/a",
+        "density": "n/a",
+        "opacity": "1",
+        "blend_mode": "normal"
+      }
     },
     "particle_systems": {
       "enabled": false,
-      "type": "none", "description": "n/a", "technology": "none",
-      "params": { "count": "0", "shape": "n/a", "size_range": "n/a", "movement_pattern": "n/a", "color_behavior": "n/a", "interaction": "none", "spawn_area": "n/a" }
+      "type": "none",
+      "description": "n/a",
+      "technology": "none",
+      "params": {
+        "count": "0",
+        "shape": "n/a",
+        "size_range": "n/a",
+        "movement_pattern": "n/a",
+        "color_behavior": "n/a",
+        "interaction": "none",
+        "spawn_area": "n/a"
+      }
     },
     "3d_elements": {
       "enabled": false,
-      "type": "none", "description": "n/a", "technology": "none",
-      "params": { "renderer": "n/a", "lighting": "n/a", "camera": "n/a", "materials": "n/a", "geometry": "n/a", "post_processing": [], "interaction_model": "none" }
+      "type": "none",
+      "description": "n/a",
+      "technology": "none",
+      "params": {
+        "renderer": "n/a",
+        "lighting": "n/a",
+        "camera": "n/a",
+        "materials": "n/a",
+        "geometry": "n/a",
+        "post_processing": [],
+        "interaction_model": "none"
+      }
     },
     "shader_effects": {
       "enabled": false,
-      "type": "none", "description": "n/a", "technology": "none",
-      "params": { "uniforms": [], "vertex_manipulation": "n/a", "fragment_output": "n/a", "noise_type": "n/a", "distortion": "n/a" }
+      "type": "none",
+      "description": "n/a",
+      "technology": "none",
+      "params": {
+        "uniforms": [],
+        "vertex_manipulation": "n/a",
+        "fragment_output": "n/a",
+        "noise_type": "n/a",
+        "distortion": "n/a"
+      }
     },
     "scroll_effects": {
-      "parallax": { "enabled": false, "layers": "0", "depth_range": "n/a", "speed_curve": "n/a" },
-      "scroll_triggered_animations": { "enabled": false, "trigger_points": "n/a", "animation_type": "none", "scrub_behavior": "n/a" },
-      "scroll_morphing": { "enabled": false, "description": "n/a" }
+      "parallax": {
+        "enabled": false,
+        "layers": "0",
+        "depth_range": "n/a",
+        "speed_curve": "n/a"
+      },
+      "scroll_triggered_animations": {
+        "enabled": false,
+        "trigger_points": "n/a",
+        "animation_type": "none",
+        "scrub_behavior": "n/a"
+      },
+      "scroll_morphing": {
+        "enabled": false,
+        "description": "n/a"
+      }
     },
     "text_effects": {
       "type": "3d-extrude",
@@ -204,14 +350,26 @@
     },
     "cursor_effects": {
       "enabled": false,
-      "type": "none", "description": "n/a",
-      "params": { "shape": "n/a", "size": "n/a", "blend_mode": "n/a", "trail": "n/a", "interaction_zone": "n/a" }
+      "type": "none",
+      "description": "n/a",
+      "params": {
+        "shape": "n/a",
+        "size": "n/a",
+        "blend_mode": "n/a",
+        "trail": "n/a",
+        "interaction_zone": "n/a"
+      }
     },
     "image_effects": {
       "type": "none",
       "description": "Imagens aparecem sem filtro, dentro de moldura afundada. Vídeos de cliente usam player nativo.",
       "technology": "none",
-      "params": { "filter_pipeline": [], "hover_transform": "none", "reveal_animation": "none", "distortion_type": "n/a" }
+      "params": {
+        "filter_pipeline": [],
+        "hover_transform": "none",
+        "reveal_animation": "none",
+        "distortion_type": "n/a"
+      }
     },
     "glassmorphism_neumorphism": {
       "enabled": true,
@@ -232,7 +390,14 @@
       "params": {
         "draw_method": "SVG declarativo",
         "animation_loop": "nenhum — animação só na entrada e no hover",
-        "color_scheme": ["#C9976A", "#8CA3B3", "#93AC8B", "#D0AC63", "#DD8A63", "#A99E94"],
+        "color_scheme": [
+          "#C9976A",
+          "#8CA3B3",
+          "#93AC8B",
+          "#D0AC63",
+          "#DD8A63",
+          "#A99E94"
+        ],
         "responsiveness": "ResponsiveContainer",
         "interaction": "hover destaca a fatia ou a barra e abre balão com o valor"
       }
@@ -248,6 +413,6 @@
         "filter_effects": "nenhum"
       }
     },
-    "composite_notes": "O sistema tem uma regra que atravessa as três dimensões: a luz vem sempre de 315 graus, e é isso que faz o conjunto parecer um material só em vez de uma coleção de componentes. Duas consequências práticas foram aprendidas na prática e valem registro. Primeira: toda cor de acento precisa de uma variante clareada para o escuro, porque as cores da marca têm luminosidade próxima do #2A2622 e desaparecem nele — foi assim que nasceram o --cacau-claro e a paleta clara dos gráficos. Segunda: o escuro só é legível como hierarquia enquanto for raro. Ele marca duas coisas, os resultados entregues ao cliente e a porta de entrada; espalhá-lo pelo resto do portal o transformaria em decoração e apagaria o contraste que hoje orienta a leitura. O portal não usa Canvas, WebGL, parallax nem scroll-trigger, e a ausência é uma escolha coerente: o público é uma equipe de duas pessoas e clientes acessando pelo celular, e o custo de qualquer um desses efeitos não se pagaria."
+    "composite_notes": "O sistema tem uma regra que atravessa as três dimensões: a luz vem sempre de 315 graus, e é isso que faz o conjunto parecer um material só em vez de uma coleção de componentes. Duas consequências práticas foram aprendidas na prática e valem registro. Primeira: toda cor de acento precisa de uma variante clareada para o escuro, porque as cores da marca têm luminosidade próxima do #2A2622 e desaparecem nele — foi assim que nasceram o --cacau-claro e a paleta clara dos gráficos. Segunda: o escuro só é legível como hierarquia enquanto for raro. Ele marca duas coisas, os resultados entregues ao cliente e a porta de entrada; espalhá-lo pelo resto do portal o transformaria em decoração e apagaria o contraste que hoje orienta a leitura. O portal não usa Canvas, WebGL, parallax nem scroll-trigger, e a ausência é uma escolha coerente: o público é uma equipe de duas pessoas e clientes acessando pelo celular, e o custo de qualquer um desses efeitos não se pagaria. Auditoria de 19 ago 2026: a escala de raios tinha onze valores distintos e foi consolidada em cinco; o CSS do menu de abas anterior foi removido; a sombra do botao primario passou a obedecer aos 315 graus como o resto do sistema."
   }
 }

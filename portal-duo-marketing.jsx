@@ -3018,6 +3018,13 @@ const CSS = `
 .duo *, .duo *::before, .duo *::after { box-sizing: border-box; }
 .duo button { font: inherit; cursor: pointer; }
 .duo :focus-visible { outline: 2px solid var(--cacau); outline-offset: 3px; }
+/* Sobre as superfícies escuras o marrom da marca some — mesma regra que já
+   valia para os gráficos, que aqui não tinha sido aplicada. Sem isto, quem
+   navega pelo teclado perde de vista onde está dentro do login e das métricas. */
+.entrada-caixa :focus-visible,
+.gcaixa :focus-visible,
+.tabela-rolagem :focus-visible,
+.resumo :focus-visible { outline-color: var(--cacau-claro); }
 .oculto { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
 .rel { box-shadow: -5px -5px 12px var(--luz), 5px 5px 14px var(--sombra); background: var(--base); border: 0; }
@@ -3060,8 +3067,6 @@ const CSS = `
 .notif-txt { font-size: 13px; display: block; line-height: 1.45; }
 
 /* abas */
-.abas { display: flex; gap: 6px; padding: 0 26px 4px; flex-wrap: wrap; }
-.aba { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding: 9px 16px; border-radius: 999px; background: transparent; border: 0; color: var(--tinta2); }
 /* Sem a luz branca: era ela que criava o halo aceso atrás da aba ativa.
    Fica só a sombra, marcando o afundado de forma discreta. */
 /* A aba da página aberta fica afundada e assim permanece. Ao trocar, uma solta
@@ -3075,7 +3080,7 @@ const CSS = `
 .quadro .corpo { flex: 1; min-width: 0; padding-left: 18px; padding-right: 0; }
 .item-lat {
   display: flex; align-items: center; gap: 11px; width: 100%;
-  border: 0; background: transparent; border-radius: 12px;
+  border: 0; background: transparent; border-radius: 14px;
   padding: 11px 14px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--tinta2); text-align: left;
   transition: box-shadow .3s ease-out, color .3s ease-out, transform .3s ease-out;
@@ -3128,9 +3133,6 @@ const CSS = `
   .quadro .corpo { padding-left: 0; width: 100%; }
 }
 
-.aba { transition: box-shadow .3s ease-out, color .3s ease-out, transform .3s ease-out; }
-.aba:active { transform: translateY(1px) scale(0.98); transition-duration: .07s; }
-.aba-on { color: var(--tinta); box-shadow: inset 2px 2px 5px var(--sombra); transition-duration: .12s; }
 .atalho-risco { color: var(--brasa); }
 /* lista de arquivos anexados, com o x para trocar um deles */
 .arq-lista { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -3165,7 +3167,7 @@ const CSS = `
    apagar métrica é raro, ver o nome é constante. */
 .chip-metrica { display: inline-flex; align-items: center; }
 /* Caixa de confirmação de ação destrutiva. */
-.confirma { max-width: 440px; width: 100%; border-radius: 18px; padding: 26px 28px; }
+.confirma { max-width: 440px; width: 100%; border-radius: 22px; padding: 26px 28px; }
 .confirma .painel-titulo { margin: 0 0 8px; }
 .confirma .acoes { margin-top: 20px; }
 .chip-metrica .arq-x {
@@ -3184,13 +3186,13 @@ const CSS = `
 /* trilha */
 .legenda-tipos { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
 .lt { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; color: var(--tinta2); letter-spacing: 0.06em; text-transform: uppercase; }
-.lt-cor { width: 9px; height: 9px; border-radius: 3px; display: inline-block; background: var(--tinta2); }
+.lt-cor { width: 9px; height: 9px; border-radius: 4px; display: inline-block; background: var(--tinta2); }
 .tipo-carrossel { background: var(--cacau); }
 .tipo-reels { background: var(--ardosia); }
 .tipo-story { background: var(--sage); }
 .tipo-gravacao { background: var(--brasa); }
 
-.trilha { display: grid; grid-template-columns: repeat(7, minmax(142px, 1fr)); overflow-x: auto; border-radius: 16px; padding: 8px; }
+.trilha { display: grid; grid-template-columns: repeat(7, minmax(142px, 1fr)); overflow-x: auto; border-radius: 14px; padding: 8px; }
 /* Sem o traço vertical, o número de um dia encostava na sigla do dia seguinte
    ("17 TER") e a semana virava uma tira só. O último não leva traço. */
 .dia { min-width: 142px; padding: 4px; border-right: 1px solid rgba(150,136,124,0.20); }
@@ -3204,7 +3206,7 @@ const CSS = `
 .add { border: 0; background: transparent; color: var(--tinta2); font-size: 17px; font-weight: 200; padding: 6px; border-radius: 10px; opacity: 0.55; }
 .add:hover { opacity: 1; box-shadow: inset 2px 2px 4px var(--sombra), inset -2px -2px 4px var(--luz); }
 
-.clipe { text-align: left; padding: 10px 11px 10px 14px; border-radius: 12px; display: flex; flex-direction: column; gap: 3px; position: relative; overflow: hidden; transition: transform .14s ease; background: var(--base); }
+.clipe { text-align: left; padding: 10px 11px 10px 14px; border-radius: 14px; display: flex; flex-direction: column; gap: 3px; position: relative; overflow: hidden; transition: transform .14s ease; background: var(--base); }
 .clipe::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--tinta2); }
 .clipe.tipo-carrossel::before { background: var(--cacau); }
 .clipe.tipo-reels::before { background: var(--ardosia); }
@@ -3222,7 +3224,7 @@ const CSS = `
 /* cartões */
 .grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 18px; }
 .grade.dois { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
-.card { border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 11px; text-align: left; position: relative; overflow: hidden; }
+.card { border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 11px; text-align: left; position: relative; overflow: hidden; }
 .card.max-form { max-width: 420px; }
 .card.borda-carrossel::after, .card.borda-reels::after, .card.borda-story::after, .card.borda-gravacao::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
 .card.borda-carrossel::after { background: var(--cacau); }
@@ -3235,7 +3237,7 @@ button.card:hover { transform: translateY(-2px); }
 .card-corpo { display: flex; gap: 14px; align-items: flex-start; }
 .card-titulo { font-weight: 400; font-size: 16px; margin: 0; line-height: 1.35; }
 .card-titulo.grande { font-size: 22px; font-weight: 300; }
-.capa { width: 64px; height: 80px; object-fit: cover; border-radius: 8px; flex: 0 0 64px; }
+.capa { width: 64px; height: 80px; object-fit: cover; border-radius: 10px; flex: 0 0 64px; }
 .capa-vazia { display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--tinta2); text-align: center; }
 .novo { align-items: center; justify-content: center; gap: 8px; min-height: 170px; color: var(--tinta2); font-size: 13px; }
 .mini-placar { display: flex; gap: 7px; flex-wrap: wrap; }
@@ -3252,7 +3254,7 @@ button.card:hover { transform: translateY(-2px); }
 
 /* perfil */
 .perfil-topo { flex-direction: row; align-items: center; gap: 18px; margin-bottom: 18px; }
-.dado { border-radius: 12px; padding: 13px 15px; display: flex; flex-direction: column; gap: 4px; }
+.dado { border-radius: 14px; padding: 13px 15px; display: flex; flex-direction: column; gap: 4px; }
 .dado-valor { font-size: 14px; }
 
 /* alterações */
@@ -3277,16 +3279,16 @@ button.card:hover { transform: translateY(-2px); }
 .placar-txt { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--tinta2); }
 
 /* pedido */
-.pedido { border-radius: 12px; padding: 11px 13px; box-shadow: inset 2px 2px 5px var(--sombra), inset -2px -2px 5px var(--luz); }
+.pedido { border-radius: 14px; padding: 11px 13px; box-shadow: inset 2px 2px 5px var(--sombra), inset -2px -2px 5px var(--luz); }
 .pedido-tag { font-size: 10px; color: var(--brasa); text-transform: uppercase; letter-spacing: 0.06em; }
 .assinatura .pedido-tag { color: var(--sage); }
 .pedido-txt { margin: 6px 0 0; font-size: 13px; line-height: 1.5; }
 
 /* anexo */
-.anexo { border-radius: 12px; padding: 13px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.anexo { border-radius: 14px; padding: 13px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .anexo-titulo { font-size: 13px; font-weight: 500; word-break: break-all; }
 .peso { display: inline-block; margin-left: 8px; font-size: 10px; font-weight: 500; letter-spacing: 0.06em;
-        color: var(--tinta2); border: 1px solid rgba(112,104,96,0.28); border-radius: 20px; padding: 2px 8px; white-space: nowrap; }
+        color: var(--tinta2); border: 1px solid rgba(112,104,96,0.28); border-radius: 22px; padding: 2px 8px; white-space: nowrap; }
 
 /* espaço em disco */
 .espaco { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
@@ -3382,7 +3384,7 @@ button.card:hover { transform: translateY(-2px); }
 .pizza-linha { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; justify-content: center; }
 .pizza-legenda { display: flex; flex-direction: column; gap: 9px; min-width: 190px; }
 .pl-item { display: flex; align-items: center; gap: 9px; font-size: 13px; }
-.pl-cor { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 11px; }
+.pl-cor { width: 11px; height: 11px; border-radius: 4px; flex: 0 0 11px; }
 .pl-nome { flex: 1; color: var(--tinta2); }
 .pl-valor { font-weight: 500; }
 .dica { position: absolute; transform: translate(-50%, -125%); background: var(--tinta); color: var(--base); padding: 8px 12px; border-radius: 10px; pointer-events: none; white-space: nowrap; box-shadow: 0 6px 16px rgba(53,48,43,0.3); z-index: 5; }
@@ -3397,7 +3399,7 @@ button.card:hover { transform: translateY(-2px); }
 .pizza-total { fill: var(--noite-tinta); font-size: 24px; font-weight: 300; font-family: 'Poppins', sans-serif; font-variant-numeric: tabular-nums; }
 .pizza-total-rot { fill: var(--noite-tinta2); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; font-family: 'Poppins', sans-serif; }
 .resumo-metricas { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 16px; }
-.resumo { border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; }
+.resumo { border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; }
 .resumo-num { font-size: 26px; font-weight: 200; line-height: 1.2; }
 .resumo-var { font-size: 11px; color: var(--tinta2); }
 
@@ -3501,7 +3503,10 @@ select.campo { appearance: none; }
 .entrada-caixa .olho:hover .icone-olho { stroke: var(--noite-tinta); }
 /* Botão claro sobre a caixa escura: a inversão é o que o torna o ponto mais
    luminoso da tela, e portanto o próximo passo óbvio. */
-.btn-primario { background: var(--base); color: var(--tinta); box-shadow: 0 4px 14px rgba(0,0,0,0.3); }
+/* A sombra reta para baixo destoava: no portal a luz vem sempre de cima à
+   esquerda, e só o que de fato paira — aviso, balão, modal — foge disso.
+   Este botão está apoiado no cartão, então segue a regra da casa. */
+.btn-primario { background: var(--base); color: var(--tinta); box-shadow: -2px -2px 7px var(--noite-luz), 4px 5px 15px rgba(0,0,0,0.42); }
 .btn-primario:hover { background: #EDE7E1; }
 .btn-primario:active { background: var(--base); box-shadow: inset 2px 2px 6px var(--sombra); }
 .btn-primario:disabled { background: var(--noite-alto); color: var(--noite-tinta2); box-shadow: none; }
@@ -3523,7 +3528,7 @@ select.campo { appearance: none; }
 
 /* painel */
 .fundo { position: fixed; inset: 0; background: rgba(53,48,43,0.45); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; backdrop-filter: blur(3px); }
-.painel { background: var(--base); width: 100%; max-width: 860px; max-height: 92vh; overflow-y: auto; border-radius: 20px; box-shadow: 0 20px 50px rgba(53,48,43,0.35); animation: sobe .2s ease; }
+.painel { background: var(--base); width: 100%; max-width: 860px; max-height: 92vh; overflow-y: auto; border-radius: 22px; box-shadow: 0 20px 50px rgba(53,48,43,0.35); animation: sobe .2s ease; }
 .painel.estreito { max-width: 470px; }
 @keyframes sobe { from { transform: translateY(18px); opacity: 0; } to { transform: none; opacity: 1; } }
 .painel-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 22px 26px 14px; position: sticky; top: 0; background: var(--base); z-index: 2; }
@@ -3544,13 +3549,13 @@ select.campo { appearance: none; }
 /* galeria */
 .galeria { display: flex; flex-direction: column; gap: 10px; }
 .visor { border-radius: 14px; padding: 12px; position: relative; display: flex; align-items: center; justify-content: center; min-height: 190px; }
-.visor img, .visor video { max-width: 100%; max-height: 330px; border-radius: 8px; display: block; }
+.visor img, .visor video { max-width: 100%; max-height: 330px; border-radius: 10px; display: block; }
 .vazio-visor { font-size: 11px; color: var(--tinta2); text-align: center; line-height: 1.7; }
 .seta { position: absolute; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%; font-size: 20px; line-height: 1; color: var(--tinta2); }
 .seta-esq { left: 8px; } .seta-dir { right: 8px; }
 .tiras { display: flex; gap: 8px; overflow-x: auto; padding: 2px; }
-.tira { border: 0; background: transparent; padding: 0; border-radius: 8px; opacity: 0.5; flex: 0 0 auto; }
-.tira img { width: 46px; height: 58px; object-fit: cover; border-radius: 8px; display: block; }
+.tira { border: 0; background: transparent; padding: 0; border-radius: 10px; opacity: 0.5; flex: 0 0 auto; }
+.tira img { width: 46px; height: 58px; object-fit: cover; border-radius: 10px; display: block; }
 .tira-on { opacity: 1; box-shadow: 0 0 0 2px var(--cacau); }
 
 /* chips */
