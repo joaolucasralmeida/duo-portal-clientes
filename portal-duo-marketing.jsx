@@ -313,21 +313,22 @@ const ANIM_OLHO = {
 
 function Olho({ cortado }) {
   return (
-    // A animação vai no próprio desenho, e não em classe de CSS: as regras de
-    // estado não venciam o estilo antigo do ícone, e aqui não há disputa.
-    // O risco fica sempre presente, escondido pelo tracejado — é o que faz ele
-    // SE DESENHAR ao fechar, em vez de piscar pronto do nada.
+    // Dois desenhos sobrepostos que trocam entre si: aberto (contorno e pupila)
+    // e fechado (arco com cílios). A animação vai no estilo do elemento, não em
+    // classe, porque as regras de estado não venciam o estilo antigo do ícone.
     <svg viewBox="0 0 24 24" className="icone-olho" aria-hidden="true">
-      <path
-        d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z"
-        style={{ ...ANIM_OLHO, transform: cortado ? "scaleY(0.32)" : "scaleY(1)" }}
-      />
-      <circle cx="12" cy="12" r="3.2"
-        style={{ ...ANIM_OLHO, transform: cortado ? "scale(0.15)" : "scale(1)", opacity: cortado ? 0 : 1 }}
-      />
-      <line x1="4" y1="20" x2="20" y2="4" className="olho-risco"
-        style={{ strokeDasharray: 23, strokeDashoffset: cortado ? 0 : 23, transition: "stroke-dashoffset .24s ease-out" }}
-      />
+      <g style={{ ...ANIM_OLHO, opacity: cortado ? 0 : 1, transform: cortado ? "scaleY(0.4)" : "scaleY(1)" }}>
+        <path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z" />
+        <circle cx="12" cy="12" r="3.2" />
+      </g>
+      <g style={{ ...ANIM_OLHO, opacity: cortado ? 1 : 0, transform: cortado ? "scaleY(1)" : "scaleY(0.4)" }}>
+        <path d="M2.6 10.2c2.7 3.5 5.8 5.2 9.4 5.2s6.7-1.7 9.4-5.2" />
+        <line x1="4.6" y1="13.9" x2="3.1" y2="16.4" />
+        <line x1="8.4" y1="15.5" x2="7.6" y2="18.2" />
+        <line x1="12" y1="15.9" x2="12" y2="18.7" />
+        <line x1="15.6" y1="15.5" x2="16.4" y2="18.2" />
+        <line x1="19.4" y1="13.9" x2="20.9" y2="16.4" />
+      </g>
     </svg>
   );
 }
@@ -1977,7 +1978,11 @@ function GraficoLinha({ pontos, nome, aoPassar }) {
           <circle cx={x(i)} cy={y(p.valor)} r="14" className="g-alvo"
             onMouseEnter={() => aoPassar({ rotulo: `${nome} · ${p.rotulo}`, valor: num(p.valor), x: (x(i) / W) * 100, y: (y(p.valor) / H) * 100 })} />
           <circle cx={x(i)} cy={y(p.valor)} r="4.5" className="g-ponto" />
-          <text x={x(i)} y={H - 12} className="g-rotulo" textAnchor="middle">{p.rotulo}</text>
+          {/* O primeiro rótulo é ancorado pela esquerda e o último pela direita.
+              Centralizar todos jogava metade do primeiro para fora do desenho —
+              era isso que cortava o "Começo Cont..." na borda. */}
+          <text x={x(i)} y={H - 12} className="g-rotulo"
+            textAnchor={i === 0 ? "start" : i === pontos.length - 1 ? "end" : "middle"}>{p.rotulo}</text>
         </g>
       ))}
     </svg>
@@ -2784,7 +2789,12 @@ const CSS = `
 .aba { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; padding: 9px 16px; border-radius: 999px; background: transparent; border: 0; color: var(--tinta2); }
 /* Sem a luz branca: era ela que criava o halo aceso atrás da aba ativa.
    Fica só a sombra, marcando o afundado de forma discreta. */
-.aba-on { color: var(--tinta); box-shadow: inset 2px 2px 5px var(--sombra); }
+/* A aba da página aberta fica afundada e assim permanece. Ao trocar, uma solta
+   enquanto a outra afunda — o movimento mostra para onde você foi.
+   A ida é rápida e a volta mais lenta, igual aos outros botões. */
+.aba { transition: box-shadow .3s ease-out, color .3s ease-out, transform .3s ease-out; }
+.aba:active { transform: translateY(1px) scale(0.98); transition-duration: .07s; }
+.aba-on { color: var(--tinta); box-shadow: inset 2px 2px 5px var(--sombra); transition-duration: .12s; }
 .atalho-risco { color: var(--brasa); }
 /* lista de arquivos anexados, com o x para trocar um deles */
 .arq-lista { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -3035,22 +3045,6 @@ button.card:hover { transform: translateY(-2px); }
 
 /* olho */
 .icone-olho { width: 20px; height: 20px; fill: none; stroke: var(--tinta2); stroke-width: 1.6; stroke-linecap: round; display: block; }
-/* O olho fecha: a pálpebra desce, a pupila some e o risco se desenha.
-   23 é o comprimento da diagonal do risco — escondê-lo por esse tanto é o que
-   faz o traço aparecer riscando, e não surgir pronto. */
-.olho-risco {
-  stroke: var(--brasa); stroke-width: 1.8;
-  stroke-dasharray: 23; stroke-dashoffset: 23;
-  transition: stroke-dashoffset .24s ease-out;
-}
-.olho-contorno, .olho-pupila {
-  transform-box: view-box; transform-origin: 12px 12px;
-  transition: transform .24s ease-out, opacity .18s ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .olho-risco, .olho-contorno, .olho-pupila { transition: none; }
-}
 
 /* chamada */
 .chamada { border-radius: 14px; padding: 16px 20px; margin-bottom: 20px; border-left: 3px solid var(--mel); }
