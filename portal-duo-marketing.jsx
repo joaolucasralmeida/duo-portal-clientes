@@ -2442,8 +2442,25 @@ function FormPeriodo({ dados, metricas, onSalvar, onExcluir, onFechar }) {
 
 /* ---------------------------- documentos ---------------------------- */
 
+// Busca e ordenação — o que a tabela do bloco entrega de útil, sem trocar os
+// cartões por linhas. Contrato se acumula para sempre: em um ano são dezenas,
+// e rolar a tela procurando pelo nome deixa de funcionar.
 function Documentos({ adm, cliente, documentos, onNovo, onEnviar, onAssinar, onRecusar, onExcluir }) {
   const conta = (s) => documentos.filter((d) => d.status === s).length;
+  const [busca, setBusca] = useState("");
+  const [ordem, setOrdem] = useState("recentes");
+
+  const ORDENS = {
+    recentes: { rotulo: "Mais recentes", fn: (a, b) => (b.enviadoEm || "").localeCompare(a.enviadoEm || "") },
+    antigos: { rotulo: "Mais antigos", fn: (a, b) => (a.enviadoEm || "").localeCompare(b.enviadoEm || "") },
+    nome: { rotulo: "Nome (A–Z)", fn: (a, b) => a.nome.localeCompare(b.nome, "pt-BR") },
+    situacao: { rotulo: "Situação", fn: (a, b) => a.status.localeCompare(b.status) },
+  };
+
+  const termo = busca.trim().toLowerCase();
+  const lista = documentos
+    .filter((d) => !termo || `${d.nome} ${d.docTipo || ""}`.toLowerCase().includes(termo))
+    .sort(ORDENS[ordem].fn);
   return (
     <section>
       <Cabecalho titulo="Documentos"
@@ -2470,11 +2487,25 @@ function Documentos({ adm, cliente, documentos, onNovo, onEnviar, onAssinar, onR
         </div>
       )}
 
+      {documentos.length > 3 && (
+        <div className="barra-filtro">
+          <input className="campo baixo busca" type="search" value={busca} placeholder="Buscar pelo nome do documento"
+            onChange={(e) => setBusca(e.target.value)} aria-label="Buscar documento" />
+          <div className="chips-ordem">
+            {Object.entries(ORDENS).map(([k, o]) => (
+              <button key={k} className={ordem === k ? "atalho baixo" : "atalho rel"} onClick={() => setOrdem(k)}>{o.rotulo}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {documentos.length === 0 ? (
         <div className="nada baixo">Nenhum documento por aqui ainda.</div>
+      ) : lista.length === 0 ? (
+        <div className="nada baixo">Nenhum documento com “{busca}”. Tente outra palavra.</div>
       ) : (
         <div className="grade">
-          {documentos.map((d) => (
+          {lista.map((d) => (
             <div className="card rel" key={d.id}>
               <div className="card-topo">
                 <span className="cod">{d.tipo}</span>
@@ -3244,6 +3275,12 @@ button.card:hover { transform: translateY(-2px); }
 
 /* Cartão de indicador: nome e tendência dividem a primeira linha, o número
    domina embaixo. A pastilha dá a direção antes de a pessoa ler o valor. */
+/* Busca e ordenação. Só aparecem quando há o que procurar — com três
+   documentos na tela, o filtro atrapalharia mais do que ajudaria. */
+.barra-filtro { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.busca { flex: 1; min-width: 220px; max-width: 340px; }
+.chips-ordem { display: flex; gap: 6px; flex-wrap: wrap; }
+
 .resumo-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .selo-tend { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 500; padding: 3px 7px 3px 5px; border-radius: 999px; font-variant-numeric: tabular-nums; }
 .selo-tend.sobe { color: #9CC08C; background: rgba(156,192,140,0.14); }
