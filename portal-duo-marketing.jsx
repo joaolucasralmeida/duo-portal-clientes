@@ -2695,6 +2695,15 @@ const CSS = `
   --brasa: #A4522F;
   --mel: #8C6D2E;
 
+  /* Tons escuros, usados só no painel de resultados. Saíram da --tinta, não
+     de um cinza qualquer, para o escuro pertencer à mesma paleta. */
+  --noite: #2A2622;
+  --noite-alto: #332E29;
+  --noite-luz: rgba(255,255,255,0.07);
+  --noite-sombra: rgba(0,0,0,0.5);
+  --noite-tinta: #EAE4DE;
+  --noite-tinta2: #A99E94;
+
   background: var(--base);
   color: var(--tinta);
   font-family: 'Poppins', system-ui, sans-serif;
@@ -2911,6 +2920,40 @@ button.card:hover { transform: translateY(-2px); }
 .td-nome { font-weight: 400; }
 .td-sobe { color: var(--sage); }
 .td-desce { color: var(--brasa); }
+
+/* ---------------- painel de resultados ----------------
+   Único lugar do portal com fundo escuro, e de propósito: aqui o número é o
+   produto entregue, não o material de trabalho. O relevo continua, invertido
+   — a luz vem fraca de cima e a sombra fecha embaixo.
+   Números em tabular-nums: sem isso os algarismos têm larguras diferentes e
+   as colunas desalinham, que é o defeito clássico de tabela de dados. */
+.tabela-rolagem.baixo, .gcaixa.baixo, .nada.baixo,
+.resumo.rel, .resumo.baixo {
+  background: var(--noite);
+  color: var(--noite-tinta);
+  box-shadow: inset 2px 2px 7px var(--noite-sombra), inset -1px -1px 3px var(--noite-luz);
+}
+.tabela-rolagem.baixo { padding: 4px 10px 10px; }
+.tabela { font-variant-numeric: tabular-nums; }
+.tabela th { color: var(--noite-tinta2); padding: 14px 12px 10px; }
+.tabela td { color: var(--noite-tinta); border-top: 1px solid rgba(255,255,255,0.09); padding: 13px 12px; }
+.tabela tbody tr:first-child td { border-top: 0; }
+.tabela .td-nome { color: var(--noite-tinta2); font-size: 12px; letter-spacing: 0.02em; }
+/* A variação é a leitura que importa, então vira pastilha em vez de texto solto. */
+.tabela .td-sobe, .tabela .td-desce { font-size: 12px; font-weight: 500; }
+.tabela .td-sobe { color: #9CC08C; }
+.tabela .td-desce { color: #E08A63; }
+
+/* No escuro os rótulos do gráfico sumiriam: eram cinza-médio sobre bege. */
+.gcaixa .g-titulo { color: var(--noite-tinta); }
+.gcaixa .g-rotulo { fill: var(--noite-tinta2); }
+.gcaixa .meta { color: var(--noite-tinta2); }
+.nada.baixo { color: var(--noite-tinta2); }
+
+.resumo { font-variant-numeric: tabular-nums; }
+.resumo .rotulo { color: var(--noite-tinta2); }
+.resumo-num { color: var(--noite-tinta); letter-spacing: -0.02em; }
+.resumo-var { color: var(--noite-tinta2); }
 
 /* gráfico */
 .barra-visual { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: flex-start; }

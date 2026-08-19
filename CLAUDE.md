@@ -93,6 +93,14 @@ Valide a sintaxe depois de editar (`esbuild --loader=jsx` resolve rápido).
   `--ardosia #4C5A66`, `--sage #55684F`, `--brasa #A4522F`, `--mel #8C6D2E`.
 - Estilo visual: neumorfismo. Classes `.rel` (saliente) e `.baixo` (afundado),
   com sombra dupla — luz branca de um lado, sombra bege do outro.
+- **Tons escuros (18 ago 2026):** `--noite #2A2622`, `--noite-alto #332E29`,
+  `--noite-tinta #EAE4DE`, `--noite-tinta2 #A99E94`. Saíram da `--tinta`, para
+  pertencerem à mesma paleta. Valem **só no painel de métricas** — tabela,
+  gráfico e cartões de resumo — onde o número é o produto entregue, e não o
+  material de trabalho. Não espalhe escuro pelo resto do portal: o contraste
+  é o que dá sentido a ele. O relevo continua lá, invertido.
+- Tabela de dados usa `font-variant-numeric: tabular-nums`. Sem isso os
+  algarismos têm larguras diferentes e as colunas desalinham.
 - Cores identificam o **tipo** de post, não o status: Carrossel = cacau,
   Reels = ardósia, Story = sage, Gravação = brasa. Status aparece como pastilha.
 - Métricas: **exatamente quatro**. Seguidores, Visualizações, Visitas ao perfil,
