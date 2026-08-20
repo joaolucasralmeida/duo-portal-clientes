@@ -1,0 +1,24 @@
+# Cabeçalhos de segurança do portal.
+# A Cloudflare lê este arquivo e aplica os cabeçalhos a cada resposta.
+
+/*
+  # Impede que o portal seja embutido dentro de outro site. Sem isto, alguém
+  # poderia carregá-lo invisível numa página falsa e capturar cliques do seu
+  # cliente sobre botões que ele não vê — inclusive Aprovar e Assinar.
+  X-Frame-Options: DENY
+
+  # Impede o navegador de "adivinhar" o tipo de um arquivo. É o que evita que
+  # um arquivo enviado por upload seja interpretado como código.
+  X-Content-Type-Options: nosniff
+
+  # Ao sair do portal por um link, o site de destino não recebe o endereço
+  # completo da página de origem — que pode conter o cliente que estava aberto.
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # Nenhuma tela do portal usa câmera, microfone ou localização. Negar de
+  # antemão significa que nada carregado aqui consegue pedir esse acesso.
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
+
+  # O navegador passa a exigir conexão segura mesmo se alguém digitar o
+  # endereço sem https.
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
