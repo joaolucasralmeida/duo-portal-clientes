@@ -5,8 +5,7 @@
 Dois cliques em **`ABRIR-PORTAL.bat`**.
 
 Abre uma janela preta com letras — é o motor do portal, deixe aberta. Alguns
-segundos depois o navegador abre sozinho no portal. Entre com um dos acessos de
-teste, por exemplo `gabriele` / `demo-equipe`.
+segundos depois o navegador abre sozinho no portal. Entre com o seu acesso.
 
 Para desligar, feche a janela preta.
 
@@ -61,21 +60,7 @@ Você não precisa dele aqui. Está guardado para quando fizer falta.
 
 ---
 
-## Onde o projeto mora
-
-`C:\Users\usuario\Documents\portal-duo` — uma pasta local, fora do OneDrive.
-
-Saiu do OneDrive porque a sincronização atrapalhava de verdade: ela segurava
-arquivos abertos e travou duas ferramentas do projeto. Além disso, a pasta
-`node_modules` tem milhares de arquivos que o OneDrive tentava sincronizar à toa.
-
----
-
 ## Trabalhar de casa
-
-**Para só ver o portal, não precisa de nada.** Ele está na internet:
-https://portal-duo-marketing.joaolucasralmeida.workers.dev — abre de qualquer
-computador ou celular.
 
 **Para mexer no projeto de casa**, o lugar dos arquivos é o **GitHub**, não uma
 pasta sincronizada. Ele já guarda tudo, com histórico de cada alteração:
@@ -99,10 +84,3 @@ aqui.
 **não vai para o GitHub de propósito** — chave não se guarda em repositório. Em
 casa ele não vai existir, e o portal reclama. É rápido de resolver: eu gero um
 novo lá, buscando as chaves pela ferramenta do Supabase, igual fiz aqui.
-
----
-
-## A pasta velha
-
-Sobrou `...\OneDrive\Claude Code` com um arquivo de
-configuração dentro. Pode apagar quando quiser — não tem nada do projeto ali.

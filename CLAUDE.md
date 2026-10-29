@@ -28,22 +28,6 @@ volta ao ponto inicial. O próximo passo é ligar no Supabase.
 - `como-colocar-no-ar.md` — guia de deploy escrito para leigo.
 - `COMO-RODAR.md` — como abrir o portal na máquina dele, os dois jeitos abaixo.
 
-## Onde fica
-
-`C:\Users\usuario\Documents\portal-duo` — local, **fora do OneDrive**. Foi
-movido para lá em 17 ago 2026: a sincronização segurava arquivos abertos e
-quebrou tanto o `supabase init` quanto o `Move-Item`. Não devolva para pasta
-sincronizada; para trabalhar de outra máquina, o caminho é clonar do GitHub
-(`joaolucasralmeida/portal-duo-marketing`).
-
-## Rede
-
-A rede do trabalho **bloqueia as portas 5432 e 6543**, então nada fala direto
-com o Postgres daqui — `supabase db push`, `db dump` e afins falham por timeout.
-HTTPS passa normal, então funcionam: a API REST do Supabase, o `supabase
-projects`, o `api-keys` e o portal em si. Migração de banco só pelo SQL Editor
-do painel.
-
 ## Como rodar
 
 **O Rafael não escreve código — quem programa é você.** Ele só dá dois cliques no
@@ -122,24 +106,6 @@ Valide a sintaxe depois de editar (`esbuild --loader=jsx` resolve rápido).
   registrado — título, legenda, versões, alterações e datas ficam. Isso existe
   porque o Storage do Supabase grátis tem só 1 GB e vídeo enche rápido.
 - Contrato **nunca** entra na limpeza. Fica guardado para sempre.
-
-## Acessos de teste (dados falsos do protótipo)
-
-| usuário  | senha         | papel                        |
-|----------|---------------|------------------------------|
-| gabriele | demo-equipe      | adm, Social Media            |
-| joao     | demo-equipe      | adm, Editor                  |
-| brownie  | demo-cliente  | cliente c1, Brownie Brasileiro |
-| cafe     | demo-cliente2     | cliente c2, Café da Serra    |
-
-O login e as senhas do protótipo são simbólicos, sem segurança real. Na versão
-com Supabase isso vira Supabase Auth de verdade.
-
-O quadro "Acessos de teste" que ficava na tela de login **foi removido a pedido
-dele** (17 ago 2026), para o protótipo não parecer protótipo ao mostrar para
-cliente. Não recoloque. Esta tabela aqui virou a única referência das senhas.
-Remover o quadro é cosmético: as senhas continuam legíveis no código que vai
-para o navegador, porque não existe back-end ainda.
 
 ## Para onde o projeto vai
 
