@@ -7,6 +7,11 @@ alteração, métricas do Instagram e contratos para assinar.
 Está publicado no Cloudflare Workers e ligado a um banco Supabase de verdade,
 com login, armazenamento de arquivos e permissões por cliente.
 
+**[Abrir a demonstração →](https://joaolucasralmeida.github.io/duo-portal-clientes/)** · dados fictícios, qualquer senha:
+`equipe@demo.com` (visão da agência) ou `cliente@demo.com` (visão do cliente)
+
+![Calendário da semana na visão da agência](docs/calendario.png)
+
 > **Feito do zero em 4 dias** (17 a 20 ago 2026, 63 commits), com o
 > [Claude Code](https://claude.com/claude-code) como par de programação.
 > Eu defini o produto, as regras de negócio e o design e revisei cada entrega.
@@ -36,6 +41,12 @@ Tira a aprovação de conteúdo da conversa solta e coloca num fluxo com regra:
 | Métricas | Quatro indicadores do Instagram, com gráficos (Recharts) em painel escuro |
 | Documentos | Contratos com assinatura no portal, guardados para sempre |
 | Acessos | Dois papéis, `adm` (equipe) e `cliente`, com login pelo Supabase Auth |
+
+| Cliente aprovando um carrossel | Métricas do Instagram |
+| --- | --- |
+| ![Post aberto na visão do cliente, com aprovar e solicitar alterações](docs/cliente-post.png) | ![Painel de métricas em fundo escuro](docs/metricas.png) |
+
+![Quadro de aprovações da semana, com o contador de alterações por post](docs/aprovacoes.png)
 
 ## Decisões que importam
 
@@ -72,6 +83,17 @@ foi aplicado como régua sobre o próprio código para corrigir os desvios
 
 React 18 · Vite · Recharts · Supabase (Postgres, Auth, Storage, RLS, Edge
 Functions em Deno) · WhatsApp Cloud API · Cloudflare Workers
+
+## Modo demonstração
+
+A demonstração publicada é o mesmo portal, com o Supabase trocado por
+tabelas em memória ([`src/supabase-demo.js`](src/supabase-demo.js)). Ela
+imita até as regras de acesso do banco: quem entra como cliente só vê os
+próprios dados e nunca vê rascunho. Nada sai do navegador.
+
+```bash
+npm run build:demo   # gera dist-demo/, publicado no GitHub Pages
+```
 
 ## Rodando localmente
 

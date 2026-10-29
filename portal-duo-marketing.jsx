@@ -52,7 +52,15 @@ const paraData = (iso) => { const [a, m, d] = iso.split("-").map(Number); return
 const paraIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const somaDias = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const segundaDe = (d) => somaDias(d, -((d.getDay() + 6) % 7));
-const dataCurta = (iso) => { if (!iso) return "—"; const d = paraData(iso); return `${d.getDate()} ${MESES[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`; };
+// Aceita "2026-03-04" e também o carimbo completo que o banco devolve para
+// colunas timestamptz ("2026-03-04T10:22:00+00:00"). Antes só a primeira
+// forma funcionava, e a tela de Documentos quebrava ao mostrar um envio.
+const dataCurta = (iso) => {
+  if (!iso) return "—";
+  const d = iso.length > 10 ? new Date(iso) : paraData(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return `${d.getDate()} ${MESES[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
+};
 
 const diasDaSemana = (semana) =>
   !semana ? [] : Array.from({ length: 7 }, (_, i) => {
@@ -1098,7 +1106,7 @@ export default function PortalDuo() {
       url: links[d.arquivo_caminho] || null, arquivoNome: d.arquivo_nome || "",
       caminho: d.arquivo_caminho,
       enviadoEm: d.enviado_em, assinadoEm: d.assinado_em,
-      assinatura: d.assinado_em ? { nome: d.assinante_nome, codigo: d.assinatura_codigo, quando: d.assinado_em } : null,
+      assinatura: d.assinado_em ? { nome: d.assinante_nome, codigo: d.assinatura_codigo, quando: new Date(d.assinado_em).toLocaleString("pt-BR") } : null,
       recusa: d.recusa_motivo ? { motivo: d.recusa_motivo, quando: d.assinado_em } : null,
       historico: [],
     })));

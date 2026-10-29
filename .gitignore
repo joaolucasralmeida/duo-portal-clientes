@@ -9,3 +9,4 @@ dist/
 
 # atalho temporario de autorizacao, nao faz parte do projeto
 AUTORIZAR-SUPABASE.bat
+dist-demo/
