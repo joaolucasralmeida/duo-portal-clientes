@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Icone da aba. A marca DUO e texto com relevo em CSS, e relevo some em
+       16px -- entao aqui vai a inicial desenhada em vetor, sem depender de
+       nenhuma fonte estar instalada. Cores: --base e --tinta da paleta. -->
+  <rect width="64" height="64" rx="14" fill="#DBD4CE"/>
+  <path fill="#35302B" fill-rule="evenodd"
+        d="M20 14h13a18 18 0 0 1 0 36H20zm9 8v20h4a10 10 0 0 0 0-20z"/>
+</svg>
